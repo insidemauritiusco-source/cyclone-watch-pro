@@ -1,4 +1,4 @@
-const CACHE='cyclone-v15-live-satellite-shell';const SHELL=['./','index.html','v6.js','v6.css','v7.js','v7.css','v8.js','v8.css','v9.js','v9.css','video-player.js','v15.js','v15.css','studio-logo.png','manifest.webmanifest','icon.svg'];
+const CACHE='cyclone-v15-1-reference-dashboard-shell';const SHELL=['./','index.html','v6.js','v6.css','v7.js','v7.css','v8.js','v8.css','v9.js','v9.css','video-player.js','v15.js','v15.css','studio-logo.png','manifest.webmanifest','icon.svg'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('cyclone-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==self.location.origin||!u.href.startsWith(self.registration.scope)||(u.pathname.endsWith('/data.json')||u.pathname.endsWith('/media.json')||u.pathname.endsWith('/archive.json')))return;
