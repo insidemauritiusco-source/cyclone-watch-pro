@@ -44,8 +44,14 @@ def storm(html):
     if not m: raise ValueError('Position not recognized')
     lat=float(m.group(1))*(-1 if m.group(2).upper()=='S' else 1); lon=float(m.group(3))*(-1 if m.group(4).upper()=='W' else 1)
     if not (-90<=lat<=90 and -180<=lon<=180): raise ValueError('Invalid coordinates')
-    name=next((line.strip() for line in lines if re.fullmatch(r'(?:Tropical Disturbance|Tropical Depression|Subtropical Depression|(?:Moderate|Severe) Tropical Storm|(?:(?:Very )?Intense )?Tropical Cyclone)(?:\s+[\w\-]+){0,4}',line.strip(),re.I)),None)
-    if not name: raise ValueError('Storm name not recognized')
+    # Classification may be embedded in a table label, paragraph or parentheses.
+    classification=r'(?:Tropical Disturbance|Tropical Depression|Subtropical Depression|(?:Moderate|Severe) Tropical Storm|(?:(?:Very )?Intense )?Tropical Cyclone)'
+    match_name=re.search(r'\b'+classification+r'\b(?:\s*[:\-]?\s*\(?\s*(?:[A-Z]{0,2}\d{1,3}[A-Z]?|[A-Z]{3,15})\s*\)?)?', ' '.join(lines),re.I)
+    # Match a bulletin's explicit system identifier or name, rather than navigation.
+    name=match_name.group(0).strip() if match_name else None
+    if not name:
+        print('Storm bulletin text for parser review:',repr(t[:1500]))
+        name='Reported tropical system (name unverified)'
     def match(pattern):
         x=re.search(pattern,t,re.I); return x.group(1).strip() if x else None
     pressure=match(r'Estimated Central Pressure\s*(\d{3,4})\s*hPa'); speed=match(r'Movement\s*[^\n]*?(\d+(?:\.\d+)?)\s*km/h'); direction=match(r'Movement\s*([^\n\d]+)\s*\d+(?:\.\d+)?\s*km/h'); observed=match(r'Date and Time\s*([^\n]+)')
@@ -59,6 +65,7 @@ def update():
     try: s=storm(get('current-cyclone.php'))
     except Exception as e: s=old.get('storm'); errors.append(str(e))
     if s and s.get('name')=='Cyclone Warning Bulletin Mauritius': s=None
+    if s and s.get('name')=='Reported tropical system (name unverified)': errors.append('Storm name not verified')
     history=[x for x in old.get('history',[]) if x.get('name')!='Cyclone Warning Bulletin Mauritius']
     if not errors and s and (not history or history[-1]!=s): history.append(s)
     result=dict(checked_at=checked,source_status='incomplete' if errors else 'ok',warning=w,storm=s,history=history[-100:],errors=errors)
