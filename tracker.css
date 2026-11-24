@@ -30,3 +30,30 @@ svg .storm-spin{transform-box:fill-box;transform-origin:center;animation:stormSp
 header{gap:6px}header #clock{margin-left:0}header a{font-size:12px}header img{width:36px;height:34px}header small{font-size:9px}
 footer{grid-template-columns:auto minmax(60px,1fr) auto auto;gap:6px;padding:6px 9px}#frameTime{grid-column:1/-1;grid-row:2;max-width:none}footer .legend{grid-column:1/-1;grid-row:3;max-width:none;display:flex;align-items:center;gap:8px}footer .gradient{width:90px;flex-shrink:0}footer select{padding:5px}footer button{padding:8px}footer label{font-size:11px}.mapstatus{max-width:48%}.mapfoot{font-size:9px}}
 @media(max-height:480px) and (min-width:851px){header{padding:4px 9px}header small{display:none}footer{padding:5px 8px}}
+
+/* Advanced map review: preserve the map-first layout and real raster projection. */
+.map svg #places text,.map svg #tracks text {font-size:var(--map-label-size,27px)}
+.map svg #grid text {font-size:var(--map-label-size,22px)}
+.map svg text {stroke-width:3px;stroke-linejoin:round}
+.layerMenu[open] {max-height:min(60dvh,390px);overflow:auto;overscroll-behavior:contain}
+.zoomtools button {min-width:44px;min-height:44px}
+.layerOptions button,.layerOptions a {min-height:40px}
+#frameTime {overflow-wrap:anywhere}
+#stormPanel {scrollbar-gutter:stable}
+@media(max-width:850px) {
+  .mapstatus {max-width:46%;font-size:10px;overflow-wrap:anywhere}
+  .layers {top:8px;left:8px}
+  .mapfoot {gap:4px 10px}
+  footer input[type=range] {min-height:32px}
+}
+@media(max-height:480px) {
+  header {gap:4px 8px;padding:4px 8px}
+  header img {width:32px;height:29px}
+  header small {display:none}
+  footer {padding:4px 8px;gap:4px}
+  footer .legend {font-size:10px}
+  .layerMenu[open] {max-height:45dvh}
+}
+@media(prefers-reduced-motion:reduce) {
+  .map svg .storm-ring,.map svg .storm-spin {animation:none}
+}
