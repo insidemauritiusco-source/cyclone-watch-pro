@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "observations": [
+    {
+      "name": "Tropical Disturbance (B03)",
+      "observed": "24 November 2026 04 AM",
+      "lat": -9.5,
+      "lon": 77.1,
+      "pressure": 1005,
+      "speed": 15.0,
+      "direction": "South Southwest",
+      "wind": null,
+      "id": "6bc6326e408f311d42f114d2",
+      "archived_at": "2026-11-24T04:40:03.306845+00:00"
+    }
+  ],
+  "bulletins": [
+    {
+      "storm": {
+        "name": "Tropical Disturbance (B03)",
+        "observed": "24 November 2026 04 AM",
+        "lat": -9.5,
+        "lon": 77.1,
+        "pressure": 1005,
+        "speed": 15.0,
+        "direction": "South Southwest",
+        "wind": null
+      },
+      "warning": "No warning reported",
+      "source_status": "ok",
+      "id": "4a33114af28ba17233307fff",
+      "checked_at": "2026-11-24T04:40:03.306845+00:00"
+    }
+  ],
+  "last_successful_check": "2026-11-24T04:40:03.306845+00:00",
+  "source": "Mauritius Meteorological Services",
+  "storm_url": "https://metservice.intnet.mu/current-cyclone.php",
+  "warning_url": "https://metservice.intnet.mu/tropical-cyclone/current-cyclone.php",
+  "archive_note": "Structured summaries only; observations are not forecasts. Source check time is not observation time. Retains up to 5000 observations and bulletin changes."
+}
