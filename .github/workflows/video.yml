@@ -102,6 +102,7 @@ jobs:
           BROADCAST_LOGO: ${{ inputs.logo || 'off' }}
         run: |
           python -m py_compile video.py tv_layout.py
+          python test-v24-layout.py
           python video.py
       - uses: actions/upload-artifact@v4
         if: steps.gate.outputs.render == 'true'

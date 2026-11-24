@@ -78,34 +78,36 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None, 
     line(44,248,t['obs']+' : '+data['obs'],24,'#b9d6e0')
     line(44,283,t['verified'] if data['fresh'] else t['saved'],21,'#42d9ee' if data['fresh'] else '#ffc36b',True)
     # Large satellite panel; full original field of view and printed timestamps retained.
-    box(36,318,1008,808,'#102337',8)
-    line(54,330,t['sat'],23,'#c4deea',True)
+    box(36,310,1008,870,'#102337',8)
+    line(54,322,t['sat'],23,'#c4deea',True)
     # Satellite imagery and coordinate history are separate: the satellite source
     # need not have the same observation time as the bulletin track.
     points=data.get('track',[]); count=len(points)
     if frame is not None:
-        pic=ImageOps.contain(frame,(1984,890),Image.Resampling.LANCZOS)
-        im.paste(pic,((W-pic.width)//2,720+(890-pic.height)//2))
-        line(54,812,captured,19,'#e0f3f9',True)
-        line(54,838,('Dernière image disponible' if language=='fr' else 'Dernie zimaz disponib') if poster else (t['sequence'] if frame_count>1 else t['single']),15,'#aac6d7',maxw=790)
-        line(890,838,f'{min(phase+1,frame_count)}/{frame_count}',15,'#42d9ee',True,maxw=115)
-        line(730,330,'MMS / METEOSAT',15,'#42d9ee',True,maxw=280)
-        box(54,858,970,3,'#28485c')
-        box(54,858,max(1,970*min(phase+1,frame_count)/max(1,frame_count)),3,'#42d9ee')
+        pic=ImageOps.contain(frame,(1984,1030),Image.Resampling.LANCZOS)
+        im.paste(pic,((W-pic.width)//2,700+(1030-pic.height)//2))
+        line(54,870,captured,19,'#e0f3f9',True)
+        line(54,894,('Dernière image disponible' if language=='fr' else 'Dernie zimaz disponib') if poster else (t['sequence'] if frame_count>1 else t['single']),15,'#aac6d7',maxw=790)
+        line(890,894,f'{min(phase+1,frame_count)}/{frame_count}',15,'#42d9ee',True,maxw=115)
+        line(730,322,'MMS / METEOSAT',15,'#42d9ee',True,maxw=280)
+        box(54,914,970,3,'#28485c')
+        box(54,914,max(1,970*min(phase+1,frame_count)/max(1,frame_count)),3,'#42d9ee')
     else:
         line(66,550,t['missing'],28,'#ffc36b',True)
         line(66,602,t['coords']+' : '+data['coord'],22,'#b9d6e0')
     # Regional track schematic: plotted points only; no forecast cone or synthetic center.
-    box(48,867,984,244,'#091d2d',7)
+    box(48,925,984,247,'#091d2d',7)
     label='TRAJECTOIRE OBSERVÉE · CARTE SCHÉMATIQUE' if language=='fr' else 'TRAJEKTWAR OBSERVE · KART SKEMATIK'
-    line(62,875,label,18,'#b9d6e0',True,maxw=940)
+    line(62,933,label,18,'#b9d6e0',True,maxw=940)
     lo=min([43]+[p['lon']-2 for p in points]);hi=max([83]+[p['lon']+2 for p in points])
     south=min([-29]+[p['lat']-2 for p in points]);north=max([-4]+[p['lat']+2 for p in points])
-    def xy(lat,lon):return ((86+(lon-lo)/(hi-lo)*900)*2,(906+(north-lat)/(north-south)*146)*2)
+    def xy(lat,lon):return ((86+(lon-lo)/(hi-lo)*900)*2,(963+(north-lat)/(north-south)*150)*2)
     for lon in range(45,81,5):
         x,y=xy(north,lon);d.line((x,y,x,xy(south,lon)[1]),fill='#294558',width=2)
+        d.text((x+4,xy(north,lon)[1]+2),str(lon)+'°E',font=font(9),fill='#7896a8')
     for lat in range(-5,-26,-5):
         x,y=xy(lat,lo);d.line((x,y,xy(lat,hi)[0],y),fill='#294558',width=2)
+        d.text((x+2,y-20),str(abs(lat))+'°S',font=font(9),fill='#7896a8')
     for place,lat,lon in [('Madagascar',-19.4,46.7),('Maurice' if language=='fr' else 'Moris',-20.2,57.5),('Rodrigues',-19.71,63.42),('Agalega',-10.4,56.6),('Réunion',-21.13,55.53)]:
         x,y=xy(lat,lon);d.ellipse((x-5,y-5,x+5,y+5),fill='#bbd4de')
         d.text((x+8,y+7),place,font=font(13),fill='#bbd4de')
@@ -120,7 +122,7 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None, 
     direction=str(data.get('bearing') or '').lower().replace('-','').replace(' ','')
     bearings={'north':0,'northnortheast':22.5,'northeast':45,'eastnortheast':67.5,'east':90,'eastsoutheast':112.5,'southeast':135,'southsoutheast':157.5,'south':180,'southsouthwest':202.5,'southwest':225,'westsouthwest':247.5,'west':270,'westnorthwest':292.5,'northwest':315,'northnorthwest':337.5}
     if direction in bearings:
-        bx,by=1950,1835; ang=math.radians(bearings[direction]);ex,ey=bx+34*math.sin(ang),by-34*math.cos(ang)
+        bx,by=1950,1950; ang=math.radians(bearings[direction]);ex,ey=bx+34*math.sin(ang),by-34*math.cos(ang)
         d.ellipse((bx-42,by-42,bx+42,by+42),fill='#18394c',outline='#b9d6e0',width=2)
         d.text((bx-8,by-40),'N',font=font(9,True),fill='white')
         d.line((bx,by,ex,ey),fill='#ffc36b',width=5)
@@ -130,34 +132,34 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None, 
         msg=f'{shown}/{count} · '+p['observed']
         if count==1:msg+=(' · point unique, pas de trajectoire' if language=='fr' else ' · enn sel pwin, pena trajektwar')
     else:msg='Aucun point confirmé' if language=='fr' else 'Pena pwin konfirme'
-    line(62,1075,msg,17,'#b9d6e0',True,maxw=940)
+    line(62,1135,msg,17,'#b9d6e0',True,maxw=940)
     # V23 broadcast graphics: a small observed-position progress strip, never a forecast.
     if count:
-        box(62,1100,940,3,'#294558')
-        box(62,1100,max(1,940*shown/count),3,'#42d9ee')
+        box(62,1160,940,3,'#294558')
+        box(62,1160,max(1,940*shown/count),3,'#42d9ee')
     # Animate emphasis only, never the measured values.
     stats=[(t['pressure'],data['pressure']),(t['speed'],data['speed']),(t['distance'],data['distance']),(t['direction'],data['direction'])]
     for i,(label,val) in enumerate(stats):
-        x=36+(i%2)*510;y=1139+(i//2)*91
-        box(x,y,498,82,'#1a3c53' if phase%4==i else '#142b41',7)
-        box(x,y,5,82,'#42d9ee' if phase%4==i else '#365a70',2)
+        x=36+(i%2)*510;y=1190+(i//2)*81
+        box(x,y,498,74,'#1a3c53' if phase%4==i else '#142b41',7)
+        box(x,y,5,74,'#42d9ee' if phase%4==i else '#365a70',2)
         line(x+15,y+8,label,18,'#b9d6e0',True,maxw=466)
-        line(x+15,y+33,val,30,'#42d9ee',True,maxw=466)
-    line(44,1327,t['coords']+' : '+data['coord'],23,'#b9d6e0',True)
-    box(36,1361,1008,76,'#392e25',7)
-    line(52,1369,t['warning'],17,'#ffc36b',True)
-    line(52,1394,data['warning'],28,'#ffc36b',True)
+        line(x+15,y+30,val,29,'#42d9ee',True,maxw=466)
+    line(44,1356,t['coords']+' : '+data['coord'],23,'#b9d6e0',True)
+    box(36,1390,1008,76,'#392e25',7)
+    line(52,1398,t['warning'],17,'#ffc36b',True)
+    line(52,1423,data['warning'],28,'#ffc36b',True)
     # Real subtitles are overlaid into this dedicated area at render time.
-    box(36,1450,908,166,'#0d2032',9)
+    box(36,1480,908,164,'#0d2032',9)
     if poster:
-        line(54,1465,'BULLETIN DATÉ' if language=='fr' else 'BILTEN DATE',21,'#42d9ee',True)
-        line(54,1507,t['ticker1'],22,'#eaf5fa',True,maxw=870)
-        line(54,1551,t['ticker3'],19,'#b9d6e0',maxw=870)
-    else:line(54,1459,t['subtitle'],15,'#7796aa',True)
-    line(44,1632,t['checked']+' : '+data['checked'],22,'#c3d8e6',True)
-    line(44,1664,t['credit'],19,'#aac6d7')
-    box(36,1702,1008,70,'#16445b',7)
-    line(53,1719,t['ticker'+str(phase%3+1)],23,'white',True,maxw=970)
+        line(54,1490,'BULLETIN DATÉ' if language=='fr' else 'BILTEN DATE',21,'#42d9ee',True)
+        line(54,1528,t['ticker1'],22,'#eaf5fa',True,maxw=870)
+        line(54,1572,t['ticker3'],19,'#b9d6e0',maxw=870)
+    else:line(54,1488,t['subtitle'],15,'#7796aa',True)
+    line(44,1653,t['checked']+' : '+data['checked'],22,'#c3d8e6',True)
+    line(44,1683,t['credit'],19,'#aac6d7')
+    box(36,1715,1008,58,'#16445b',7)
+    line(53,1728,t['ticker'+str(phase%3+1)],23,'white',True,maxw=970)
     # Constant safety footer; the rotating news ticker never replaces this warning.
     line(44,1790,t['ticker1'],21,'#b9d6e0',True)
     line(44,1822,t['ticker3'],20,'#b9d6e0')
@@ -166,8 +168,8 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None, 
 def ass_captions(labels,path,landscape=False):
     # ASS coordinates are explicit, independent of the encoded pixel dimensions.
     width,height=(1920,1080) if landscape else (1080,1920)
-    x,y=(960,908) if landscape else (480,1485)
-    size=34 if landscape else 32
+    x,y=(960,908) if landscape else (480,1510)
+    size=38 if landscape else 36
     margin=110 if landscape else 88
     header=f"""[Script Info]
 ScriptType: v4.00+
@@ -187,6 +189,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     rows=[]
     for start,end,s in labels:
         # Fit all words, including longer safety phrases. Do not truncate.
+        size=38 if landscape else 36
         s=s.replace('\\','/').replace('{','(').replace('}',')')
         maxpx=1650 if landscape else 820
         f=font(size,True); pieces=[]; row=''

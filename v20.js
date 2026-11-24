@@ -4,7 +4,7 @@ function quality(meta,voice,format){
  const entry=meta?.quality_checks?.[voice]?.[variant];
  const times=meta?.satellite_frame_times;
  const chronology=Array.isArray(times)&&times.length>0&&times.length===meta.satellite_frame_count&&times.every((v,i)=>Number.isFinite(Date.parse(v))&&(!i||Date.parse(v)>Date.parse(times[i-1])));
- const dims={original:[2160,3840],'4k':[2160,3840],hd:[1080,1920],landscape:[1920,1080]}[variant];
+ const dims={original:[2160,3840],'4k':[2160,3840],hd:[1080,1920],landscape:[1920,1080],landscape4k:[3840,2160]}[variant];
  const technical=!!(entry&&dims&&entry.width===dims[0]&&entry.height===dims[1]&&entry.audio===true&&entry.caption_check===true&&Number.isFinite(entry.av_delta)&&entry.av_delta>=0&&entry.av_delta<.2);
  return {technical,chronology,frameCount:chronology?times.length:0,neural:/neural/i.test(meta?.voice?.[voice]||''),review:meta?.publication_status==='review_required'};
 }
