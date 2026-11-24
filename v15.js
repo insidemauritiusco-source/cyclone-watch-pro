@@ -71,6 +71,8 @@ labels();refresh();
 
 // Automatic MMS movement direction arrow
 (() => {
+  if (typeof document.createElement !== 'function' || !document.head) return;
+
   const directions = [
     'north', 'northnortheast', 'northeast',
     'eastnortheast', 'east', 'eastsoutheast',
