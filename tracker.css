@@ -200,3 +200,17 @@ body.v29TV[data-tv-profile=hd] #regionalInset svg,body.v29TV[data-tv-profile=uhd
 #studioDialog a{color:#8dd8ee}
 body.v29TV.v29Quiet #studioV30{display:none}
 @media(max-width:850px){#regionalInset{width:125px;bottom:32px;right:5px}#regionalInset figcaption{font-size:8px}#studioDialog{padding:10px}.studioHead h2{font-size:17px}}
+
+/* V30.1: let TV controls wrap instead of overflowing narrow grid cells. */
+@media(max-width:850px) and (orientation:portrait){
+ body.v29TV header{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:4px 6px;min-width:0}
+ body.v29TV header img{flex:0 0 26px;width:26px;height:26px}
+ body.v29TV header>div:first-of-type{flex:1 1 calc(100% - 34px);min-width:0}
+ body.v29TV header strong{font-size:16px}
+ body.v29TV header #clock{flex:1 0 100%;margin:0;font-size:10px}
+ body.v29TV header button{flex:0 0 auto;max-width:100%;min-height:32px;padding:4px 6px;white-space:nowrap;font-size:11px}
+ body.v29TV #tvProfileLabel{display:flex;align-items:center;gap:5px;flex:1 0 100%;min-width:0;font-size:11px}
+ body.v29TV #tvProfile{width:auto;max-width:70%;min-width:0}
+ body.v29TV #tvSummary{flex:1 0 100%;min-width:0;overflow-wrap:anywhere}
+ body.v29TV.v29Quiet #tvProfileLabel{display:none}
+}
