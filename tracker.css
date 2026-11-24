@@ -140,3 +140,44 @@ body.v28TV header strong{font-size:clamp(18px,2vw,44px)}
  body.v28TV footer .legend{max-width:none;font-size:inherit}
  body.v28TV #tvSummary small{font-size:clamp(12px,.6vw,22px)}
 }
+
+/* V29 presentation: uniform viewBox scale, never stretch satellite raster. */
+[hidden]{display:none!important}
+body.v29TV header{gap:4px 8px;padding:4px 8px}
+body.v29TV header>div:first-of-type small{display:none}
+body.v29TV #tvSummary{gap:3px 12px;padding:3px 8px;border-radius:5px;font-size:clamp(10px,1vw,20px)}
+body.v29TV #tvSummary small{font-size:.8em!important;flex-basis:100%}
+body.v29TV #tvSummary a{display:inline}
+body.v29TV header button,body.v29TV header select{padding:4px 7px;min-height:30px}
+body.v29TV #tvProfileLabel{font-size:.8em}
+body.v29TV footer{gap:4px 8px;padding:4px 8px;grid-template-columns:auto minmax(40px,1fr) auto auto auto auto}
+body.v29TV footer button,body.v29TV footer select{padding:4px 7px}
+body.v29TV #frameTime{grid-column:auto;grid-row:auto;font-size:clamp(10px,.7vw,20px)}
+body.v29TV footer .legend{grid-column:auto;grid-row:auto;font-size:10px;max-width:180px}
+body.v29TV .mapfoot{padding:3px 8px;gap:3px 8px}
+body.v29TV .layers{gap:4px}
+body.v29TV .zoomtools button{min-height:32px;min-width:32px}
+body.v29TV .map svg{max-height:none}
+body.v29TV[data-tv-profile=hd] .map,body.v29TV[data-tv-profile=uhd] .map{width:min(100%,calc(100dvh * 16 / 9));margin:auto}
+body.v29TV[data-tv-profile=hd] .map svg,body.v29TV[data-tv-profile=uhd] .map svg{width:100%;height:min(100%,calc(100vw * 9 / 16));top:50%;transform:translateY(-50%)}
+body.v29TV.v29Quiet .layers,body.v29TV.v29Quiet #panelToggle,body.v29TV.v29Quiet #full,body.v29TV.v29Quiet #monitor,body.v29TV.v29Quiet #tvProfileLabel{display:none}
+body.v29TV.v29Quiet footer{grid-template-columns:minmax(0,1fr);padding:3px 8px}
+body.v29TV.v29Quiet footer>*:not(#frameTime){display:none}
+body.v29TV.v29Quiet #frameTime{max-width:none}
+body.v29TV.v29Quiet #tvControls{display:block}
+@media(max-height:500px) and (orientation:landscape){
+ body.v29TV header{display:flex;flex-wrap:wrap}
+ body.v29TV header img{width:24px;height:24px}
+ body.v29TV header strong{font-size:16px}
+ body.v29TV header #clock{font-size:10px}
+ body.v29TV #tvSummary strong{font-size:11px}
+ body.v29TV #tvSummary{font-size:10px}
+ body.v29TV footer .legend{display:none}
+ body.v29TV footer{grid-template-columns:auto minmax(40px,1fr) auto auto auto}
+ body.v29TV footer #frameTime{font-size:9px}
+}
+@media(max-width:500px) and (orientation:portrait){
+ body.v29TV footer{grid-template-columns:auto minmax(40px,1fr) auto auto}
+ body.v29TV #frameTime{grid-column:1/-1}
+ body.v29TV footer .legend{display:none}
+}
