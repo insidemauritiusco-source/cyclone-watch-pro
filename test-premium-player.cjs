@@ -1,0 +1,10 @@
+const a=require('node:assert/strict'),p=require('./premium-player.js');
+const t='2026-11-24T10:00:00+00:00',u='2026-11-24T11:00:00+00:00',v='2026-11-24T12:00:00+00:00';
+const g={status:'ok',source:'https://view.eumetsat.int/geoserver/wms',crs:'EPSG:4326',frames:[t,u].map(captured_at=>({captured_at,sha256:{wide:'a'.repeat(64)}}))};
+const m={preview_only:false,publication_status:'review_required',premium_satellite_publication_status:'review_required',premium_satellite_fullscreen:'satellite-fullscreen-4k.mp4',generated_at:v,geographic_satellite_overlay:g};
+a.equal(p.select(m).dates.length,2);
+for(const bad of [null,{...m,preview_only:true},{...m,premium_satellite_fullscreen:'../bad.mp4'},{...m,publication_status:'approved'},{...m,geographic_satellite_overlay:{...g,frames:[g.frames[0],g.frames[0]]}},{...m,geographic_satellite_overlay:{...g,source:'https://example.org'}},{...m,generated_at:t}])a.equal(p.select(bad),null);
+a.notEqual(p.select({...m,generated_at:'2026-11-24T13:00:00Z'}).key,p.select(m).key);
+a.equal(p.reviewReady([true,true,true],true,true),true);
+for(const args of [[[true,true,false],true,true],[[true,true,true],false,true],[[true,true,true],true,false],[[true,true,1],true,true]])a.equal(p.reviewReady(...args),false);
+console.log('PASS premium player: source, chronological timestamps, exact filename, version and independent review guards');
