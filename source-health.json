@@ -1,12 +1,12 @@
 {
   "schema": 1,
-  "checked_at": "2026-11-24T07:54:17.569283+00:00",
+  "checked_at": "2026-11-24T08:01:27.735208+00:00",
   "bulletin": "retrieved",
   "satellite": "links_retrieved",
-  "bulletin_checked_at": "2026-11-24T07:54:07.743010+00:00",
-  "satellite_checked_at": "2026-11-24T07:54:11.966084+00:00",
-  "last_bulletin_success": "2026-11-24T07:54:07.743010+00:00",
-  "last_satellite_success": "2026-11-24T07:54:11.966084+00:00",
+  "bulletin_checked_at": "2026-11-24T08:01:18.682903+00:00",
+  "satellite_checked_at": "2026-11-24T08:01:22.170690+00:00",
+  "last_bulletin_success": "2026-11-24T08:01:18.682903+00:00",
+  "last_satellite_success": "2026-11-24T08:01:22.170690+00:00",
   "events": [
     {
       "checked_at": "2026-11-24T07:54:17.569283+00:00",
