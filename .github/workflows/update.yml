@@ -96,6 +96,13 @@ jobs:
             for f in _video/poster-fr-4k.png _video/poster-mfe-4k.png; do if test -f "$f"; then cp "$f" _site/video/; fi; done
             for f in _video/weather-*-4k.mp4 _video/weather-*-hd.mp4 _video/weather-*-landscape.mp4 _video/weather-*-landscape4k.mp4; do if test -f "$f"; then cp "$f" _site/video/; fi; done
           fi
+      - name: Bundle consistent dashboard shell
+        run: python build_dashboard.py _site
+      - name: Test mobile dashboard startup on repair commits
+        if: github.event_name == 'push'
+        run: |
+          npm install --no-save --no-package-lock playwright
+          node test-mobile-startup.cjs
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
