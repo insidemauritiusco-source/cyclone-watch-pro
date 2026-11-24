@@ -40,7 +40,21 @@ stamp=list(images)[0]
 sm={'bounds':meta['bounds']['close'],'image':images[stamp]['close'],'captured':'TEST UTC','credit':meta['credit']}
 card=render_card('fr',vals,None,'',0,0,forecast_step=0,forecast_zoom=True,satellite_map=sm)
 assert card.size==(2160,3840)
-assert card.getpixel((180,800))==(170,180,190)
+# The outer edges of the map contain coordinate labels and grid lines.
+# Verify the actual satellite raster across both halves rather than a
+# single pixel that may legitimately be overdrawn by map annotations.
+def raster_agreement(card,source):
+    matches=0;total=0
+    for y in range(30,1110,19):
+        for x in range(30,1770,23):
+            total+=1
+            matches+=card.getpixel((172+x,790+y))==source.getpixel((x,y))
+    return matches/total
+assert raster_agreement(card,sm['image'])>.8, 'Aligned satellite raster absent or displaced'
+# Verify projected forecast center independently of background agreement.
+point=b['points'][0]
+x,y=pixel(sm['bounds'],point['lat'],point['lon'])
+assert card.getpixel((172+round(x),790+round(y)))==(255,218,114), 'Forecast point not at projected coordinate'
 fallback=render_card('fr',vals,None,'',0,0,forecast_step=0,forecast_zoom=True,satellite_map=dict(sm,bounds=bb))
-assert fallback.getpixel((180,800))!=(170,180,190)
+assert raster_agreement(fallback,sm['image'])<.05, 'Mismatched projection must use schematic fallback'
 print('PASS georeferenced satellite: WMS axis order, exact advertised times, coverage, source fallback and raster placement')
