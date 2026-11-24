@@ -50,6 +50,6 @@ function onView(v){lastView=v;try{draw(v);if(v.mode==='official'&&v.connected&&!
 window.addEventListener('cyclone-render',()=>onView(window.cycloneView));
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvent=e});
 $('install').onclick=async()=>{if(installEvent){await installEvent.prompt();installEvent=null}else toast(tr('Chrome menu ⋮ → Add to Home screen / Install app.','Menu Chrome ⋮ → Ajouter à l’écran d’accueil / Installer.'))};
-if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=25.1',{updateViaCache:'none'}).catch(e=>console.warn('Install support unavailable',e));
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js?v=25.1-forecast',{updateViaCache:'none'}).catch(e=>console.warn('Install support unavailable',e));
 if(window.cycloneView)onView(window.cycloneView);else localize();
 })();

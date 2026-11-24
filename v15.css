@@ -241,3 +241,6 @@ body>main{max-width:1050px;margin:0 auto;padding:12px 12px 20px}
 }
 @media(max-width:365px){.v151metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.reference-header .v25brandname{font-size:20px}.reference-nav.v151dock button{font-size:9px}}
 @media print{.reference-nav,.reference-extras{display:none!important}}
+
+/* Official forecast overlay; existing observation and movement graphics unchanged. */
+.official-forecast-box{background:#0a2739;border:1px solid #37647b;border-radius:9px;margin:9px 0;padding:10px;font-size:12px;overflow-wrap:anywhere}.official-forecast-box h3{margin:0 0 6px;color:#ffda72;font-size:14px}.official-forecast-box a{color:#8ce9f4}.official-forecast-box button{font-size:12px;padding:5px 9px}.official-forecast-box p{margin:6px 0}.forecast-key i{width:16px;border-top:3px dotted #ffda72;flex:none}#officialForecastTrack text{fill:#ffdf80;font-size:13px;paint-order:stroke;stroke:#071a2c;stroke-width:3px;stroke-linejoin:round}#officialForecastPoints{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}#officialForecastPoints span{border:1px solid #77643b;border-radius:5px;padding:4px 6px;color:#ffe4a1}#officialForecastStatus{color:#ffe4a1}

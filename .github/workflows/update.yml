@@ -67,6 +67,11 @@ jobs:
       - name: Check regional official bulletin page reachability
         run: python regional_sources.py
         continue-on-error: true
+      - name: Validate and retrieve official cyclone forecast
+        run: |
+          python test-official-forecast.py
+          node --check official-forecast.js && node test-official-forecast.cjs
+          python official_forecast.py
       - name: Retrieve latest successful video artifact
         continue-on-error: true
         env:
@@ -83,7 +88,7 @@ jobs:
       - name: Stage public files
         run: |
           mkdir -p _site
-          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js v15.js v15.css v17.js v18.js v19.js v20.js v21.js v22.js v23.js v24.js voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
+          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js v15.js v15.css v17.js v18.js v19.js v20.js v21.js v22.js v23.js v24.js official-forecast.js official-forecast.json voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
           if test -f archive.json; then cp archive.json _site/; fi
           if test -f broadcast-archive.json; then cp broadcast-archive.json _site/; fi
           if test -f media.json; then cp media.json _site/; fi

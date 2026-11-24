@@ -5,7 +5,7 @@ root=Path(sys.argv[1] if len(sys.argv)>1 else '_site')
 p=root/'index.html'
 h=p.read_text()
 css_names=['v6.css','v7.css','v8.css','v9.css','v15.css']
-js_names=['v6.js','v7.js','v8.js','v9.js','video-player.js','v15.js','v17.js','v18.js','v19.js','v20.js','v21.js','v22.js','v23.js','v24.js']
+js_names=['v6.js','v7.js','v8.js','v9.js','video-player.js','v15.js','v17.js','v18.js','v19.js','v20.js','v21.js','v22.js','v23.js','v24.js','official-forecast.js']
 def replace_one(s,old,new):
     if s.count(old)!=1:raise ValueError('Expected one '+old)
     return s.replace(old,new,1)
@@ -36,7 +36,7 @@ startup='''<script>window.cycloneStartup={loaded:[],errors:[],current:null};</sc
 finish='''<script>
 (function(){
 const s=window.cycloneStartup,el=document.getElementById('startupHealth');
-if(s.errors.length||s.loaded.length!==14){
+if(s.errors.length||s.loaded.length!==15){
 el.textContent='Some dashboard controls could not start: '+(s.errors.join(', ')||'incomplete startup')+'. Reload or consult official MMS sources.';
 }else{el.hidden=true;}
 window.cycloneStartup.current=null;
@@ -47,4 +47,4 @@ h=replace_one(h,'</body></html>',startup+'\n'+'\n'.join(scripts)+'\n'+finish+'</
 assert all('data-cyclone-asset="'+name+'"' in h for name in css_names+js_names)
 assert h.index("const snapshot=")<h.index('data-cyclone-asset="v6.js"')
 p.write_text(h)
-print('PASS V24.1 bundled shell: 5 local stylesheets, 14 independent dashboard modules; weather data not embedded')
+print('PASS V24.1 bundled shell: 5 local stylesheets, 15 independent dashboard modules; weather data not embedded')
