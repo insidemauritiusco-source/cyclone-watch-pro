@@ -9,7 +9,7 @@ on:
     - cron: '7,22,37,52 * * * *'
   push:
     branches: [main]
-    paths-ignore: [data.json, archive.json]
+    paths-ignore: [data.json, archive.json, satellite-archive.json, source-health.json]
 concurrency:
   group: cyclone-pages
   cancel-in-progress: false
@@ -31,24 +31,30 @@ jobs:
       - name: Archive verified bulletin summaries
         run: python archive.py
         continue-on-error: true
+      - name: Retrieve optional official satellite imagery metadata
+        run: python media.py
+        continue-on-error: true
+      - name: Archive satellite links and source health
+        run: python satellite_archive.py
+        continue-on-error: true
       - name: Save observation history
         run: |
           git config user.name 'cyclone-feed[bot]'
           git config user.email 'cyclone-feed@users.noreply.github.com'
           git add data.json
           if test -f archive.json; then git add archive.json; fi
+          for f in satellite-archive.json source-health.json; do if test -f "$f"; then git add "$f"; fi; done
           if ! git diff --cached --quiet; then
             git commit -m 'Refresh official cyclone observations'
             git push origin HEAD:main
           fi
-      - name: Retrieve optional official satellite imagery metadata
-        run: python media.py
-        continue-on-error: true
       - name: Validate studio JavaScript
         run: |
           node --check v9.js && node --check video-player.js && node --check v15.js && node --check v6.js
           python -m py_compile media.py
           node test-v16-playback.cjs
+          node --check v17.js && node --check v8.js
+          python test-v17-archive.py
       - name: Retrieve latest successful video artifact
         continue-on-error: true
         env:
@@ -65,10 +71,11 @@ jobs:
       - name: Stage public files
         run: |
           mkdir -p _site
-          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js v15.js v15.css voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
+          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js v15.js v15.css v17.js voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
           if test -f archive.json; then cp archive.json _site/; fi
           if test -f broadcast-archive.json; then cp broadcast-archive.json _site/; fi
           if test -f media.json; then cp media.json _site/; fi
+          for f in satellite-archive.json source-health.json; do if test -f "$f"; then cp "$f" _site/; fi; done
           if test -f _video/source.json && test -f _video/weather-fr.mp4 && test -f _video/weather-mfe.mp4; then
             mkdir -p _site/video
             cp _video/source.json _video/weather-fr.mp4 _video/weather-mfe.mp4 _site/video/
