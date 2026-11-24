@@ -45,7 +45,7 @@ jobs:
         run: python media.py
         continue-on-error: true
       - name: Validate studio JavaScript
-        run: node --check v9.js && node --check video-player.js
+        run: node --check v9.js && node --check video-player.js && node --check v15.js
       - name: Retrieve latest successful video artifact
         continue-on-error: true
         env:
@@ -62,7 +62,7 @@ jobs:
       - name: Stage public files
         run: |
           mkdir -p _site
-          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
+          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js v15.js v15.css voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
           if test -f archive.json; then cp archive.json _site/; fi
           if test -f broadcast-archive.json; then cp broadcast-archive.json _site/; fi
           if test -f media.json; then cp media.json _site/; fi
