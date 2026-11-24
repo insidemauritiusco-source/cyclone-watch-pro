@@ -1,6 +1,6 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
-let lang='en',map=null,marker=null,track=null,firstFit=true,installEvent=null,alerts=false,lastWarning=null,lastView=null,noticeTimer;
+let lang='en',map=null,marker=null,track=null,numbered=null,firstFit=true,installEvent=null,alerts=false,lastWarning=null,lastView=null,noticeTimer;
 try{lang=['fr','mfe'].includes(localStorage.getItem('cyclone-language'))?localStorage.getItem('cyclone-language'):'en';alerts=localStorage.getItem('cyclone-alerts')==='yes'}catch(e){}
 const tr=(en,fr,mfe)=>lang==='fr'?fr:lang==='mfe'?(mfe||en):en;
 const dict={
@@ -20,6 +20,7 @@ function toast(msg){$('notice').textContent=msg;$('notice').hidden=false;clearTi
 function fit(){if(map)map.fitBounds([[-29,43],[-4,83]],{padding:[15,15]})}
 function popupText(s,v){const p=document.createElement('div');p.textContent=[v.mode==='demo'?'SIMULATION':v.stale||!v.connected||v.data.source_status!=='ok'?'UNVERIFIED / SAVED':'Reported observation',s.name,s.observed].join(' · ');return p}
 function draw(v){if(!map||$('geoMap').hidden||!v)return;const s=v.storm,valid=s&&Number.isFinite(s.lat)&&Number.isFinite(s.lon);
+ if(numbered){numbered.remove();numbered=null}
  if(!valid){if(marker){marker.remove();marker=null}if(track){track.remove();track=null}return}
  const stale=v.mode==='demo'||v.stale||!v.connected||v.data.source_status!=='ok';
  const cl='stormpin'+(stale?' stale':'')+(!v.anim?' paused':'');
@@ -27,13 +28,13 @@ function draw(v){if(!map||$('geoMap').hidden||!v)return;const s=v.storm,valid=s&
  if(!marker)marker=L.marker([s.lat,s.lon],{icon}).addTo(map);else{marker.setLatLng([s.lat,s.lon]);if(marker.options.icon.options.className!==cl)marker.setIcon(icon)}
  marker.bindPopup(popupText(s,v));
  if(track){track.remove();track=null}
- if(v.mode==='official'){const pts=(v.data.history||[]).filter(p=>p.name===s.name&&Number.isFinite(p.lat)&&Number.isFinite(p.lon)).map(p=>[p.lat,p.lon]);if(pts.length>1)track=L.polyline(pts,{color:stale?'#ffc36b':'#42d9ee',weight:3}).addTo(map)}
+ if(v.mode==='official'){const records=window.cycloneV19?.points(v)||[];const pts=records.map(p=>[p.lat,p.lon]);if(pts.length>1)track=L.polyline(pts,{color:stale?'#ffc36b':'#42d9ee',weight:3}).addTo(map);numbered=L.layerGroup().addTo(map);records.forEach((p,i)=>{const dot=L.circleMarker([p.lat,p.lon],{radius:6,color:'#eaf5ff',fillColor:stale?'#ffc36b':'#42d9ee',fillOpacity:1}).addTo(numbered);const label=document.createElement('span');label.textContent=(i+1)+' · '+p.observed;dot.bindTooltip(label,{direction:'right'});});}
 }
 $('geoToggle').onclick=()=>{try{
  if(!$('geoMap').hidden){$('geoMap').hidden=true;$('map').style.display='block';localize();return}
  if(!window.L)throw Error('Map library unavailable');
  $('geoMap').hidden=false;$('map').style.display='none';
- if(!map){map=L.map('geoMap',{scrollWheelZoom:false,minZoom:2,maxZoom:10});L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:10,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'}).on('tileerror',()=>{$('geoStatus').textContent=tr('Map tiles unavailable; switch to schematic.','Fond de carte indisponible ; utilisez la carte schématique.')}).addTo(map);L.circleMarker([-20.2,57.5],{radius:5,color:'#42d9ee',fillOpacity:1}).addTo(map).bindTooltip('Mauritius');}
+ if(!map){map=L.map('geoMap',{scrollWheelZoom:false,minZoom:2,maxZoom:10});L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:10,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'}).on('tileerror',()=>{$('geoStatus').textContent=tr('Map tiles unavailable; switch to schematic.','Fond de carte indisponible ; utilisez la carte schématique.')}).addTo(map);for(const [name,lat,lon] of [['Mauritius',-20.2,57.5],['Rodrigues',-19.71,63.42],['Réunion',-21.13,55.53],['Agalega',-10.4,56.6],['Madagascar',-19.4,46.7],['St Brandon',-16.6,59.6]])L.circleMarker([lat,lon],{radius:4,color:'#b9dce7',fillOpacity:1}).addTo(map).bindTooltip(name,{permanent:true,direction:'right',className:'v19islandlabel'});}
  map.invalidateSize();if(firstFit){fit();firstFit=false}draw(lastView);localize();
  }catch(e){$('geoMap').hidden=true;$('map').style.display='block';toast(tr('Interactive map unavailable; schematic retained.','Carte interactive indisponible ; carte schématique conservée.'))}}
 $('geoFit').onclick=fit;

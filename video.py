@@ -133,12 +133,12 @@ poster=OUT/'weather-4k.png';im.save(poster)
 import tempfile
 TMP=pathlib.Path(tempfile.mkdtemp(prefix='weather-frames-'))
 motions={}
-def motion_for(language):
+def motion_for(language,audio_duration):
     visual_language=GRAPHIC if GRAPHIC!='auto' else language
     long_report=language=='fr' and FRENCH_LENGTH=='long'
-    key=(visual_language,long_report)
+    key=(visual_language,long_report,round(audio_duration,3))
     if key in motions:return motions[key]
-    tag=visual_language+('-long' if long_report else '-short')
+    tag=visual_language+('-long' if long_report else '-short')+f'-{audio_duration:.3f}'
     values=dict(name=name if visual_language=='fr' else krname,obs=obs,fresh=fresh,pressure=number('pressure','hPa'),speed=number('speed','km/h'),distance=distance(),direction=direction if visual_language=='fr' else krdir,coord=coord,warning=warn_fr if visual_language=='fr' else krwarning,checked=checked,track=observed_track(D),bearing=S.get('direction'))
     logo=logo_transparent(ROOT/'studio-logo.png') if LOGO else None
     if LOGO and logo is None:raise ValueError('Requested logo unavailable')
@@ -154,7 +154,7 @@ def motion_for(language):
         file=TMP/f'tv-{tag}-{i:02d}.png';card.save(file);files.append(file)
         if i==count-1 and visual_language=='fr':card.save(OUT/'weather-4k.png')
     concat=TMP/f'tv-{tag}.txt'
-    hold=max(1.5,60/count) if long_report else 1.5
+    hold=(math.ceil(audio_duration*25)+count*2)/(25*count)
     concat.write_text(''.join("file '"+str(p)+f"'\nduration {hold:.6f}\n" for p in files)+"file '"+str(files[-1])+"'\n")
     motion=TMP/f'tv-{tag}.mp4'
     # A short header fade, then real chronological frames with a looping TV ticker.
@@ -275,11 +275,11 @@ for code,script,gender,language in [('fr',narration,'female','fr'),('fr-male',na
     voices[code]=engine+(' · Kreol approximation, review pronunciation' if language=='mfe' else '')
     previews[code]=preview.name;captions[code]=vtt.name
     if PREVIEW:continue
-    motion=motion_for(language)
     video=OUT/f'weather-{code}.mp4'
     audio_duration=duration(audio)
     if not math.isfinite(audio_duration) or audio_duration<=0:raise ValueError('Invalid narration duration')
-    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-stream_loop','-1','-i',str(motion),'-i',str(audio),'-i',str(srt),'-map','0:v:0','-map','1:a:0','-map','2:s:0','-c:v','copy','-c:a','aac','-b:a','160k','-c:s','mov_text','-metadata:s:s:0','language='+('fra' if language=='fr' else 'mfe'),'-disposition:s:0','0','-t',f'{audio_duration:.6f}','-movflags','+faststart',str(video)],check=True)
+    motion=motion_for(language,audio_duration)
+    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-i',str(motion),'-i',str(audio),'-i',str(srt),'-map','0:v:0','-map','1:a:0','-map','2:s:0','-c:v','copy','-c:a','aac','-b:a','160k','-c:s','mov_text','-metadata:s:s:0','language='+('fra' if language=='fr' else 'mfe'),'-disposition:s:0','0','-t',f'{audio_duration:.6f}','-movflags','+faststart',str(video)],check=True)
     probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-of','json',str(video)]))
     video_stream=next(x for x in probe['streams'] if x['codec_type']=='video')
     audio_stream=next(x for x in probe['streams'] if x['codec_type']=='audio')
@@ -309,5 +309,5 @@ for code,script,gender,language in [('fr',narration,'female','fr'),('fr-male',na
         formats[code][variant]=dest.name
         print(f'{code}: {variant} embedded captions, {width}x{height}, verified')
     print(f'{code}: 4K/audio/subtitles verified ({audio_duration:.2f}s); {voices[code]}')
-(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'publication_status':'review_required','french_length':FRENCH_LENGTH,'report_durations':report_durations,'duration_adjustments':duration_adjustments,'studio_version':14,'track_points':observed_track(D),'track_note':'Recorded bulletin positions only; satellite times are independent','graphic_language':GRAPHIC,'logo_included':LOGO,'subtitle_layout':'V14 fixed safe area, sentence timed'},indent=2,ensure_ascii=False))
+(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'publication_status':'review_required','french_length':FRENCH_LENGTH,'report_durations':report_durations,'duration_adjustments':duration_adjustments,'studio_version':19,'sequence_note':'Chronological sequence fitted to measured narration; no simulated cloud motion','track_points':observed_track(D),'track_note':'Recorded bulletin positions only; satellite times are independent','graphic_language':GRAPHIC,'logo_included':LOGO,'subtitle_layout':'V14 fixed safe area, sentence timed'},indent=2,ensure_ascii=False))
 print('Videos rendered. Satellite included:',bool(sat))
