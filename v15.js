@@ -1,4 +1,3 @@
-@@ -1,70 +1,94 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id),img=$('v15Image'),empty=$('v15Empty');
 const messages={
@@ -28,11 +27,48 @@ ordered.forEach((p,i)=>{if(p.lon<43||p.lon>83||p.lat<-29||p.lat>-4)return;const 
 $('v15Latest').onclick=()=>{stop();following=true;show(frames.length-1)};$('v15Play').onclick=play;$('v15Prev').onclick=()=>{stop();following=false;show(cursor-1)};$('v15Next').onclick=()=>{stop();following=false;show(cursor+1)};$('v15Slider').oninput=e=>{stop();following=false;show(+e.target.value)};$('v15Rate').onchange=()=>{if(timer){clearInterval(timer);timer=setInterval(()=>{if(loaded||failed)show((cursor+1)%frames.length)},+$('v15Rate').value);status()}};$('v15Reload').onclick=refresh;$('refresh').addEventListener('click',refresh);$('v15Fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('v15Satellite').requestFullscreen()}catch(e){$('v15MediaStatus').textContent=t('fullError')}};
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();else refresh()});window.addEventListener('cyclone-render',summary);window.addEventListener('cyclone-language-change',labels);setInterval(()=>{if(!document.hidden)refresh()},300000);setInterval(status,60000);
 const brand=new Image();brand.onload=()=>{try{const c=$('v15Logo'),scale=Math.min(1,320/brand.naturalWidth,220/brand.naturalHeight);c.width=Math.max(1,Math.round(brand.naturalWidth*scale));c.height=Math.max(1,Math.round(brand.naturalHeight*scale));const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(brand,0,0,c.width,c.height);const d=ctx.getImageData(0,0,c.width,c.height),a=d.data,w=c.width,h=c.height,q=[],seen=new Uint8Array(w*h);function add(i){if(i<0||i>=w*h||seen[i])return;seen[i]=1;const k=i*4;if(a[k+3]===0||Math.min(a[k],a[k+1],a[k+2])>232)q.push(i)}for(let i=0;i<w;i++){add(i);add((h-1)*w+i)}for(let y=0;y<h;y++){add(y*w);add(y*w+w-1)}for(let z=0;z<q.length;z++){const i=q[z];a[i*4+3]=0;if(i%w)add(i-1);if(i%w<w-1)add(i+1);add(i-w);add(i+w)}ctx.putImageData(d,0,0);c.hidden=false;$('v15Brand').querySelector('span').hidden=true}catch(e){}};brand.src='studio-logo.png';
- 
- 
+
 // V15.1 compact control strip. Existing IDs remain the single source of truth.
-// Automatic MMS movement direction arrow
-	
+const front={
+en:{system:'DETECTED SYSTEM',pressure:'CENTRAL PRESSURE',speed:'MOVEMENT SPEED',direction:'DIRECTION',distance:'DISTANCE TO MAURITIUS*',coords:'OBSERVED COORDINATES',observed:'OBSERVATION TIME',satControls:'Satellite playback controls',mapControls:'Map & observation playback controls',safety:'Follow official bulletins from',safetyEnd:' for the latest information. Independent dashboard, not an official warning service.',official:'Official data',satellite:'Live satellite',animation:'Animation',refresh:'Refresh',full:'Full screen',alerts:'Alerts',more:'More controls · language · video studio'},
+fr:{system:'SYSTÈME DÉTECTÉ',pressure:'PRESSION CENTRALE',speed:'DÉPLACEMENT',direction:'DIRECTION',distance:'DISTANCE DE MAURICE*',coords:'COORDONNÉES OBSERVÉES',observed:'HEURE D’OBSERVATION',satControls:'Commandes de lecture satellite',mapControls:'Carte et lecture des observations',safety:'Consultez les bulletins officiels de',safetyEnd:' pour les dernières informations. Tableau indépendant, pas un service d’alerte officiel.',official:'Données MMS',satellite:'Satellite',animation:'Animation',refresh:'Actualiser',full:'Plein écran',alerts:'Alertes',more:'Autres commandes · langue · studio vidéo'},
+mfe:{system:'SISTEM DETEKTE',pressure:'PRESION SANTRAL',speed:'DEPLASMAN',direction:'DIREKSION',distance:'DISTANS AR MORIS*',coords:'KOORDONÉ OBSERVE',observed:'LER OBSERVASION',satControls:'Kontrol satelit',mapControls:'Kart ek observasion',safety:'Konsilte bilten ofisiel',safetyEnd:' pou dernie informasion. Sa pa enn servis alert ofisiel.',official:'Done MMS',satellite:'Satelit',animation:'Animasion',refresh:'Met azour',full:'Plein ekran',alerts:'Alert',more:'Bann lezot kontrol · lang · studio video'}};
+function frontLabels(){const m=front[lang()]||front.en;for(const e of document.querySelectorAll('[data-v151]'))e.textContent=m[e.dataset.v151]||front.en[e.dataset.v151];frontUpdate()}
+function frontUpdate(){const v=window.cycloneView,s=v?.storm,ok=v?.mode==='official'&&v.connected&&!v.stale&&v.data.source_status==='ok';$('v151Coords').textContent=v?.mode==='official'?$('position').textContent:'—';$('v151Observed').textContent=v?.mode==='official'?$('observed').textContent:'—';const d=bearing[String(s?.direction||'').toLowerCase().replace(/[^a-z]/g,'')];$('v151Degrees').textContent=v?.mode==='official'&&Number.isFinite(d)?'('+d+'°)':'';const card=document.querySelector('.v151warning');card.dataset.source=ok?'verified':'unverified';card.dataset.warning=ok&&/^No warning reported$/i.test(String(v.data.warning).trim())?'none':ok&&/^Class (I|II|III|IV)$/i.test(String(v.data.warning).trim())?'active':'unknown';$('v151-official').setAttribute('aria-pressed',String(v?.mode==='official'));$('v151-animation').disabled=frames.length<2;$('v151-animation').setAttribute('aria-pressed',String(!!timer));$('v151-satellite').disabled=!frames.length}
+$('v151-official').onclick=()=>{$('live').click();$('refresh').click()};
+$('v151-satellite').onclick=()=>{$('v15Latest').click();$('v15Satellite').scrollIntoView({block:'start'})};
+$('v151-animation').onclick=()=>{$('v151SatDetails').open=true;$('v15Play').click();$('v15Satellite').scrollIntoView({block:'start'})};
+$('referenceForecast').onclick=()=>{$('v18Forecast').click();$('v18ForecastPanel').scrollIntoView({block:'start'})};$('v151-refresh').onclick=()=>$('refresh').click();
+$('v151-full').onclick=()=>$('full').click();
+$('v151-alerts').onclick=()=>{$('v151More').open=true;$('alerts').click()};
+window.addEventListener('cyclone-render',frontUpdate);window.addEventListener('cyclone-language-change',frontLabels);frontLabels();
+
+const v16Text={
+en:{layer:'Satellite layer',radar:'MMS radar',map:'Interactive map / zoom',fit:'Fit region',wind:'REPORTED STORM WIND',windNote:'Wind speed is distinct from storm movement speed. No inferred winds.',warn:'OFFICIAL WARNING MONITOR',broadcast:'FRENCH WEATHER BROADCAST',minute:'About 60 seconds · 4K',review:'Review the dated report before manual social publication.',studio:'Open video studio',alerts:'Manage alerts',latest:'Latest available',ir:'Infrared',vis:'Visible',wv:'Water vapour',available:'available captures',unavailable:'not published / unavailable',range:'24-hour replay · available captures only',pending:'Waiting for verified data',open:'Dashboard-open notifications only. Not an emergency alert service.',source:'Reported in bulletin',stale:'Current report not verified',active:'Warning monitor enabled',off:'Warning monitor disabled'},
+fr:{layer:'Canal satellite',radar:'Radar MMS',map:'Carte interactive / zoom',fit:'Vue régionale',wind:'VENT DU SYSTÈME SIGNALÉ',windNote:'Vitesse du vent distincte du déplacement du système. Aucun vent estimé.',warn:'SUIVI DES AVERTISSEMENTS',broadcast:'JOURNAL MÉTÉO FRANÇAIS',minute:'Environ 60 secondes · 4K',review:'Vérifiez le bulletin daté avant toute publication manuelle.',studio:'Ouvrir le studio vidéo',alerts:'Gérer les alertes',latest:'Dernière image disponible',ir:'Infrarouge',vis:'Visible',wv:'Vapeur d’eau',available:'captures disponibles',unavailable:'non publié / indisponible',range:'Lecture sur 24 h · captures disponibles uniquement',pending:'En attente de données vérifiées',open:'Notifications lorsque le tableau est ouvert. Pas un service d’alerte officiel.',source:'Signalé dans le bulletin',stale:'Bulletin actuel non vérifié',active:'Suivi des avertissements activé',off:'Suivi des avertissements désactivé'},
+mfe:{layer:'Kanal satelit',radar:'Radar MMS',map:'Kart interaktif / zoom',fit:'Get rezion',wind:'DIVAN SISTEM SIGNALE',windNote:'Vites divan diferan ar vites deplasman sistem. Pena estimasion divan.',warn:'SWIV AVERTISMAN',broadcast:'ZOURNAL METEO FRANSE',minute:'Anviron 60 segonn · 4K',review:'Verifie bilten date avan pibliye.',studio:'Ouver studio video',alerts:'Zer alert',latest:'Dernie zimaz disponib',ir:'Infrarouz',vis:'Vizib',wv:'Vaper delo',available:'zimaz disponib',unavailable:'pa pibliye / pa disponib',range:'Lektir 24 er · zis zimaz disponib',pending:'Pe atann done verifie',open:'Notifikasion kan tablo ouver. Pa enn servis alert ofisiel.',source:'Signale dan bilten',stale:'Bilten aktiel pa verifie',active:'Swivi avertisman aktive',off:'Swivi avertisman dezaktive'}};
+function v16Update(){
+ const m=v16Text[lang()]||v16Text.en,sel=$('v16Layer');
+ for(const opt of sel.options){const k=opt.value;const count=k==='default'?validatedFrames([...(meta?.replay||meta?.frames||[]),meta?.satellite].filter(Boolean)).length:validatedFrames(meta?.layers?.[k]?.frames||[]).length;opt.textContent=(k==='default'?m.latest:m[k])+(k==='default'?'':count?' · '+count:' · '+m.unavailable);opt.disabled=k!=='default'&&!count&&k!==selectedLayer}
+ $('v16LayerInfo').textContent=frames.length?frames.length+' '+m.available:m.unavailable;
+ $('v16Replay').textContent=m.range+(frames.length?' · '+date(frames[0].ts,'Indian/Mauritius')+' – '+date(frames[frames.length-1].ts,'Indian/Mauritius')+' MUT':'');
+ const v=window.cycloneView,official=v?.mode==='official',ok=official&&v.connected&&!v.stale&&v.data.source_status==='ok';
+ $('v16Wind').textContent=official?$('wind').textContent:'—';
+ $('v16WindTime').textContent=official?(ok?m.source:m.stale)+' · '+$('observed').textContent:m.pending;
+ let active=false;try{active=localStorage.getItem('cyclone-alerts')==='yes'}catch(e){}
+ $('v16AlertState').textContent=active?m.active:m.off;$('v16AlertNote').textContent=m.open+(ok?'':' · '+m.stale);
+}
+function v16Labels(){const m=v16Text[lang()]||v16Text.en;for(const el of document.querySelectorAll('[data-v16]'))el.textContent=m[el.dataset.v16]||v16Text.en[el.dataset.v16];v16Update()}
+$('v16Layer').onchange=()=>{stop();selectedLayer=$('v16Layer').value;following=true;frames=validatedFrames(layerItems(meta));show(frames.length-1)};
+$('v16Radar').onclick=()=>{const a=document.querySelector('[data-layer="radar"]');if(a){a.click();$('layerViewer').scrollIntoView({block:'start'})}else window.open('https://radar.metservice.intnet.mu/','_blank','noopener')};
+$('v16Map').onclick=()=>{$('geoToggle').click();$('v15Track').scrollIntoView({block:'start'})};
+$('v16Fit').onclick=()=>{if($('geoMap').hidden)$('geoToggle').click();$('geoFit').click()};
+$('v16Alert').onclick=()=>{$('alerts').click();setTimeout(v16Update,100)};
+window.addEventListener('cyclone-render',v16Update);window.addEventListener('cyclone-language-change',v16Labels);$('alerts').addEventListener('click',()=>setTimeout(v16Update,100));v16Labels();
+
+labels();refresh();
+})();
+
 // Automatic MMS movement direction arrow
 (() => {
   const directions = [
@@ -126,88 +162,7 @@ const brand=new Image();brand.onload=()=>{try{const c=$('v15Logo'),scale=Math.mi
   setInterval(updateArrow, 60000);
   updateArrow();
 })();
-					
-const front={
-(() => {
-en:{system:'DETECTED SYSTEM',pressure:'CENTRAL PRESSURE',speed:'MOVEMENT SPEED',direction:'DIRECTION',distance:'DISTANCE TO MAURITIUS*',coords:'OBSERVED COORDINATES',observed:'OBSERVATION TIME',satControls:'Satellite playback controls',mapControls:'Map & observation playback controls',safety:'Follow official bulletins from',safetyEnd:' for the latest information. Independent dashboard, not an official warning service.',official:'Official data',satellite:'Live satellite',animation:'Animation',refresh:'Refresh',full:'Full screen',alerts:'Alerts',more:'More controls · language · video studio'},
-  const directions = [
-fr:{system:'SYSTÈME DÉTECTÉ',pressure:'PRESSION CENTRALE',speed:'DÉPLACEMENT',direction:'DIRECTION',distance:'DISTANCE DE MAURICE*',coords:'COORDONNÉES OBSERVÉES',observed:'HEURE D’OBSERVATION',satControls:'Commandes de lecture satellite',mapControls:'Carte et lecture des observations',safety:'Consultez les bulletins officiels de',safetyEnd:' pour les dernières informations. Tableau indépendant, pas un service d’alerte officiel.',official:'Données MMS',satellite:'Satellite',animation:'Animation',refresh:'Actualiser',full:'Plein écran',alerts:'Alertes',more:'Autres commandes · langue · studio vidéo'},
-    'north', 'northnortheast', 'northeast',
-mfe:{system:'SISTEM DETEKTE',pressure:'PRESION SANTRAL',speed:'DEPLASMAN',direction:'DIREKSION',distance:'DISTANS AR MORIS*',coords:'KOORDONÉ OBSERVE',observed:'LER OBSERVASION',satControls:'Kontrol satelit',mapControls:'Kart ek observasion',safety:'Konsilte bilten ofisiel',safetyEnd:' pou dernie informasion. Sa pa enn servis alert ofisiel.',official:'Done MMS',satellite:'Satelit',animation:'Animasion',refresh:'Met azour',full:'Plein ekran',alerts:'Alert',more:'Bann lezot kontrol · lang · studio video'}};
-    'eastnortheast', 'east', 'eastsoutheast',
-function frontLabels(){const m=front[lang()]||front.en;for(const e of document.querySelectorAll('[data-v151]'))e.textContent=m[e.dataset.v151]||front.en[e.dataset.v151];frontUpdate()}
-    'southeast', 'southsoutheast', 'south',
-function frontUpdate(){const v=window.cycloneView,s=v?.storm,ok=v?.mode==='official'&&v.connected&&!v.stale&&v.data.source_status==='ok';$('v151Coords').textContent=v?.mode==='official'?$('position').textContent:'—';$('v151Observed').textContent=v?.mode==='official'?$('observed').textContent:'—';const d=bearing[String(s?.direction||'').toLowerCase().replace(/[^a-z]/g,'')];$('v151Degrees').textContent=v?.mode==='official'&&Number.isFinite(d)?'('+d+'°)':'';const card=document.querySelector('.v151warning');card.dataset.source=ok?'verified':'unverified';card.dataset.warning=ok&&/^No warning reported$/i.test(String(v.data.warning).trim())?'none':ok&&/^Class (I|II|III|IV)$/i.test(String(v.data.warning).trim())?'active':'unknown';$('v151-official').setAttribute('aria-pressed',String(v?.mode==='official'));$('v151-animation').disabled=frames.length<2;$('v151-animation').setAttribute('aria-pressed',String(!!timer));$('v151-satellite').disabled=!frames.length}
-    'southsouthwest', 'southwest',
-$('v151-official').onclick=()=>{$('live').click();$('refresh').click()};
-    'westsouthwest', 'west', 'westnorthwest',
-$('v151-satellite').onclick=()=>{$('v15Latest').click();$('v15Satellite').scrollIntoView({block:'start'})};
-    'northwest', 'northnorthwest'
-$('v151-animation').onclick=()=>{$('v151SatDetails').open=true;$('v15Play').click();$('v15Satellite').scrollIntoView({block:'start'})};
-  ];
-$('referenceForecast').onclick=()=>{$('v18Forecast').click();$('v18ForecastPanel').scrollIntoView({block:'start'})};$('v151-refresh').onclick=()=>$('refresh').click();
-$('v151-full').onclick=()=>$('full').click();
-$('v151-alerts').onclick=()=>{$('v151More').open=true;$('alerts').click()};
-window.addEventListener('cyclone-render',frontUpdate);window.addEventListener('cyclone-language-change',frontLabels);frontLabels();
- 
- 
-const v16Text={
-  const style = document.createElement('style');
-en:{layer:'Satellite layer',radar:'MMS radar',map:'Interactive map / zoom',fit:'Fit region',wind:'REPORTED STORM WIND',windNote:'Wind speed is distinct from storm movement speed. No inferred winds.',warn:'OFFICIAL WARNING MONITOR',broadcast:'FRENCH WEATHER BROADCAST',minute:'About 60 seconds · 4K',review:'Review the dated report before manual social publication.',studio:'Open video studio',alerts:'Manage alerts',latest:'Latest available',ir:'Infrared',vis:'Visible',wv:'Water vapour',available:'available captures',unavailable:'not published / unavailable',range:'24-hour replay · available captures only',pending:'Waiting for verified data',open:'Dashboard-open notifications only. Not an emergency alert service.',source:'Reported in bulletin',stale:'Current report not verified',active:'Warning monitor enabled',off:'Warning monitor disabled'},
-  style.textContent = `
-fr:{layer:'Canal satellite',radar:'Radar MMS',map:'Carte interactive / zoom',fit:'Vue régionale',wind:'VENT DU SYSTÈME SIGNALÉ',windNote:'Vitesse du vent distincte du déplacement du système. Aucun vent estimé.',warn:'SUIVI DES AVERTISSEMENTS',broadcast:'JOURNAL MÉTÉO FRANÇAIS',minute:'Environ 60 secondes · 4K',review:'Vérifiez le bulletin daté avant toute publication manuelle.',studio:'Ouvrir le studio vidéo',alerts:'Gérer les alertes',latest:'Dernière image disponible',ir:'Infrarouge',vis:'Visible',wv:'Vapeur d’eau',available:'captures disponibles',unavailable:'non publié / indisponible',range:'Lecture sur 24 h · captures disponibles uniquement',pending:'En attente de données vérifiées',open:'Notifications lorsque le tableau est ouvert. Pas un service d’alerte officiel.',source:'Signalé dans le bulletin',stale:'Bulletin actuel non vérifié',active:'Suivi des avertissements activé',off:'Suivi des avertissements désactivé'},
-    #mmsMovementArrow {
-mfe:{layer:'Kanal satelit',radar:'Radar MMS',map:'Kart interaktif / zoom',fit:'Get rezion',wind:'DIVAN SISTEM SIGNALE',windNote:'Vites divan diferan ar vites deplasman sistem. Pena estimasion divan.',warn:'SWIV AVERTISMAN',broadcast:'ZOURNAL METEO FRANSE',minute:'Anviron 60 segonn · 4K',review:'Verifie bilten date avan pibliye.',studio:'Ouver studio video',alerts:'Zer alert',latest:'Dernie zimaz disponib',ir:'Infrarouz',vis:'Vizib',wv:'Vaper delo',available:'zimaz disponib',unavailable:'pa pibliye / pa disponib',range:'Lektir 24 er · zis zimaz disponib',pending:'Pe atann done verifie',open:'Notifikasion kan tablo ouver. Pa enn servis alert ofisiel.',source:'Signale dan bilten',stale:'Bilten aktiel pa verifie',active:'Swivi avertisman aktive',off:'Swivi avertisman dezaktive'}};
-      animation: mmsArrowPulse 1.4s infinite;
-function v16Update(){
-    }
- const m=v16Text[lang()]||v16Text.en,sel=$('v16Layer');
-    @keyframes mmsArrowPulse {
- for(const opt of sel.options){const k=opt.value;const count=k==='default'?validatedFrames([...(meta?.replay||meta?.frames||[]),meta?.satellite].filter(Boolean)).length:validatedFrames(meta?.layers?.[k]?.frames||[]).length;opt.textContent=(k==='default'?m.latest:m[k])+(k==='default'?'':count?' · '+count:' · '+m.unavailable);opt.disabled=k!=='default'&&!count&&k!==selectedLayer}
-      0%, 100% { opacity: 0.7; }
- $('v16LayerInfo').textContent=frames.length?frames.length+' '+m.available:m.unavailable;
-      50% { opacity: 1; }
- $('v16Replay').textContent=m.range+(frames.length?' · '+date(frames[0].ts,'Indian/Mauritius')+' – '+date(frames[frames.length-1].ts,'Indian/Mauritius')+' MUT':'');
-    }
- const v=window.cycloneView,official=v?.mode==='official',ok=official&&v.connected&&!v.stale&&v.data.source_status==='ok';
-    #map.paused #mmsMovementArrow {
- $('v16Wind').textContent=official?$('wind').textContent:'—';
-      animation: none;
- $('v16WindTime').textContent=official?(ok?m.source:m.stale)+' · '+$('observed').textContent:m.pending;
-    }
- let active=false;try{active=localStorage.getItem('cyclone-alerts')==='yes'}catch(e){}
-    @media (prefers-reduced-motion: reduce) {
- $('v16AlertState').textContent=active?m.active:m.off;$('v16AlertNote').textContent=m.open+(ok?'':' · '+m.stale);
-      #mmsMovementArrow { animation: none; }
-}
-    }
-function v16Labels(){const m=v16Text[lang()]||v16Text.en;for(const el of document.querySelectorAll('[data-v16]'))el.textContent=m[el.dataset.v16]||v16Text.en[el.dataset.v16];v16Update()}
-  `;
-$('v16Layer').onchange=()=>{stop();selectedLayer=$('v16Layer').value;following=true;frames=validatedFrames(layerItems(meta));show(frames.length-1)};
-  document.head.append(style);
-$('v16Radar').onclick=()=>{const a=document.querySelector('[data-layer="radar"]');if(a){a.click();$('layerViewer').scrollIntoView({block:'start'})}else window.open('https://radar.metservice.intnet.mu/','_blank','noopener')};
-$('v16Map').onclick=()=>{$('geoToggle').click();$('v15Track').scrollIntoView({block:'start'})};
-$('v16Fit').onclick=()=>{if($('geoMap').hidden)$('geoToggle').click();$('geoFit').click()};
-$('v16Alert').onclick=()=>{$('alerts').click();setTimeout(v16Update,100)};
-window.addEventListener('cyclone-render',v16Update);window.addEventListener('cyclone-language-change',v16Labels);$('alerts').addEventListener('click',()=>setTimeout(v16Update,100));v16Labels();
- 
- 
-labels();refresh();
-  function updateArrow() {
-})();
-    document.getElementById(
-      'mmsMovementArrow'
-    )?.remove();
 
-    const v = window.cycloneView;
-    const s = v?.storm;
-    const map = document.getElementById('map');
-    const age = Date.now() -
-      Date.parse(v?.data?.checked_at);
-
-    if (!map || !s ||
-        v.mode !== 'official' ||
-        !v.connected || v.stale ||
 
 
 
