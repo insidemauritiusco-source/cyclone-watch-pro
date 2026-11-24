@@ -181,3 +181,22 @@ body.v29TV.v29Quiet #tvControls{display:block}
  body.v29TV #frameTime{grid-column:1/-1}
  body.v29TV footer .legend{display:none}
 }
+
+/* V30 studio: local preview controls, no publication action. */
+#regionalInset{position:absolute;right:10px;bottom:36px;width:clamp(125px,20%,300px);margin:0;z-index:2;background:#081727ed;border:1px solid #52728b;border-radius:7px;overflow:hidden;pointer-events:none}
+#regionalInset svg{position:static;width:100%;height:auto;display:block;transform:none;max-height:none}
+#regionalInset figcaption{font-size:10px;padding:4px;line-height:1.3}
+#regionalInset .insetLabel{font-size:55px;fill:white;stroke:#081525;stroke-width:10px;paint-order:stroke}
+body.v29TV[data-tv-profile=hd] #regionalInset svg,body.v29TV[data-tv-profile=uhd] #regionalInset svg{position:static;height:auto;width:100%;transform:none}
+#studioDialog{box-sizing:border-box;width:min(680px,94vw);max-height:90dvh;overflow:auto;background:#0b1c2b;color:#e5f4ff;border:1px solid #52728b;border-radius:12px;padding:16px}
+#studioDialog::backdrop{background:#000a}
+.studioHead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.studioHead h2{font-size:20px;margin:0}
+#studioDialog section{padding:10px 0;border-top:1px solid #36536c}
+#studioDialog h3{font-size:15px;margin:5px 0}
+#studioDialog label{display:block;margin:8px 0}
+#studioDialog pre,#studioDiagnostics{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:13px;background:#102337;padding:10px;border-radius:6px}
+#studioDialog button,#studioDialog select,#studioDialog .button{margin:4px 4px 4px 0;min-height:36px}
+#studioDialog a{color:#8dd8ee}
+body.v29TV.v29Quiet #studioV30{display:none}
+@media(max-width:850px){#regionalInset{width:125px;bottom:32px;right:5px}#regionalInset figcaption{font-size:8px}#studioDialog{padding:10px}.studioHead h2{font-size:17px}}
