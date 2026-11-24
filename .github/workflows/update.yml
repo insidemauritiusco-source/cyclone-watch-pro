@@ -5,7 +5,7 @@ on:
     - cron: '7,22,37,52 * * * *'
   push:
     branches: [main]
-    paths-ignore: [data.json]
+    paths-ignore: [data.json, archive.json]
 concurrency:
   group: cyclone-pages
   cancel-in-progress: false
@@ -22,11 +22,15 @@ jobs:
         with:
           python-version: '3.12'
       - run: python update.py
+      - name: Archive verified bulletin summaries
+        run: python archive.py
+        continue-on-error: true
       - name: Save observation history
         run: |
           git config user.name 'cyclone-feed[bot]'
           git config user.email 'cyclone-feed@users.noreply.github.com'
           git add data.json
+          if test -f archive.json; then git add archive.json; fi
           if ! git diff --cached --quiet; then
             git commit -m 'Refresh official cyclone observations'
             git push origin HEAD:main
@@ -37,7 +41,8 @@ jobs:
       - name: Stage public files
         run: |
           mkdir -p _site
-          cp index.html data.json v6.js v6.css v7.js v7.css manifest.webmanifest icon.svg sw.js _site/
+          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css manifest.webmanifest icon.svg sw.js _site/
+          if test -f archive.json; then cp archive.json _site/; fi
           if test -f media.json; then cp media.json _site/; fi
       - uses: actions/upload-pages-artifact@v3
         with:

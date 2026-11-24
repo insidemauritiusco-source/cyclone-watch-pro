@@ -25,7 +25,7 @@ async function satellite(){if(Date.now()-mediaChecked>120000)await loadMedia();i
 for(const b of document.querySelectorAll('[data-layer]'))b.addEventListener('click',()=>{currentLayer=b.dataset.layer;$('layerReload').hidden=false;$('satelliteImage').hidden=true;$('mediaTime').hidden=true;$('layerFrame').hidden=false;if(currentLayer==='satellite')satellite()});
 $('closeLayer').addEventListener('click',()=>{currentLayer=null;$('layerReload').hidden=true;$('satelliteImage').hidden=true;$('mediaTime').hidden=true});
 function refreshMedia(){if(!currentLayer||$('layerViewer').hidden||document.hidden)return;const b=document.querySelector('[data-layer="'+currentLayer+'"]');mediaChecked=0;if(b)b.click()}
-$('layerReload').onclick=refreshMedia;setInterval(refreshMedia,300000);
+$('layerReload').onclick=refreshMedia;
 function update(){view=window.cycloneView;if(!view)return;islandsRender();historyRender();portraitRender()}
 window.addEventListener('cyclone-render',update);setInterval(()=>{if($('portraitDialog').open)$('pTime').textContent=$('clock').textContent+' MUT'},1000);update();
 })();
