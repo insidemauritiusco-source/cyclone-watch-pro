@@ -87,7 +87,10 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None):
         pic=ImageOps.contain(frame,(1984,890),Image.Resampling.LANCZOS)
         im.paste(pic,((W-pic.width)//2,720+(890-pic.height)//2))
         line(54,812,captured,19,'#e0f3f9',True)
-        line(54,838,t['sequence'] if frame_count>1 else t['single'],15,'#aac6d7')
+        line(54,838,t['sequence'] if frame_count>1 else t['single'],15,'#aac6d7',maxw=790)
+        line(890,838,f'{min(phase+1,frame_count)}/{frame_count}',15,'#42d9ee',True,maxw=115)
+        box(54,858,970,3,'#28485c')
+        box(54,858,max(1,970*min(phase+1,frame_count)/max(1,frame_count)),3,'#42d9ee')
     else:
         line(66,550,t['missing'],28,'#ffc36b',True)
         line(66,602,t['coords']+' : '+data['coord'],22,'#b9d6e0')

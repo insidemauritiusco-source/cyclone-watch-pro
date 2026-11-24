@@ -1,0 +1,4 @@
+const a=require('node:assert/strict'),v=require('./v20.js');
+const good={quality_checks:{fr:{'4k':{width:2160,height:3840,audio:true,caption_check:true,av_delta:.04}}},satellite_frame_count:2,satellite_frame_times:['2026-11-24T01:00:00Z','2026-11-24T02:00:00Z'],voice:{fr:'Piper neural French'},publication_status:'review_required'};
+a.deepEqual(v.quality(good,'fr','4k'),{technical:true,chronology:true,frameCount:2,neural:true,review:true});
+a.equal(v.quality(good,'fr','hd').technical,false);a.equal(v.quality({...good,satellite_frame_times:[...good.satellite_frame_times].reverse()},'fr','4k').chronology,false);a.equal(v.quality(null,'fr','4k').technical,false);a.equal(v.quality({...good,satellite_frame_count:3},'fr','4k').chronology,false);a.match(v.pointText({observed:'dated',lat:0,lon:0,pressure:0,wind:null}),/Wind not reported/);console.log('PASS V20: manifest dimensions, audio/caption checks, chronological frame validation and missing measurement handling');

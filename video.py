@@ -216,7 +216,7 @@ def spoken(text,code):
 narration=spoken(narration,'fr');kreol=spoken(kreol,'mfe')
 (OUT/'narration-fr.txt').write_text(narration)
 (OUT/'narration-mfe.txt').write_text(kreol)
-voices={}; videos={}; previews={}; captions={}; formats={}; report_durations={}; duration_adjustments={}
+voices={}; videos={}; previews={}; captions={}; formats={}; report_durations={}; duration_adjustments={}; quality_checks={}
 def duration(p):
     return float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','default=noprint_wrappers=1:nokey=1',str(p)],text=True).strip())
 def timecode(s,sep='.'):
@@ -291,6 +291,7 @@ for code,script,gender,language in [('fr',narration,'female','fr'),('fr-male',na
     # subtitle strip. Landscape has the full satellite image on the left and the
     # original dated bulletin on the right; no extrapolated cloud motion.
     formats[code]={'original':video.name}
+    quality_checks[code]={'original':{'width':video_stream['width'],'height':video_stream['height'],'audio':True,'caption_check':True,'av_delta':abs(float(video_stream['duration'])-float(audio_stream['duration'])),'caption_mode':'selectable subtitle stream'}}
     for variant,width,height in [('4k',2160,3840),('hd',1080,1920),('landscape',1920,1080)]:
         dest=OUT/f'weather-{code}-{variant}.mp4'
         if variant=='landscape':
@@ -307,7 +308,8 @@ for code,script,gender,language in [('fr',narration,'female','fr'),('fr-male',na
         assert (vv['width'],vv['height'])==(width,height)
         assert abs(float(vv['duration'])-float(av['duration']))<0.20
         formats[code][variant]=dest.name
+        quality_checks[code][variant]={'width':vv['width'],'height':vv['height'],'audio':True,'caption_check':portrait_ass.is_file() and landscape_ass.is_file(),'caption_mode':'ASS render completed; visual placement requires review','av_delta':abs(float(vv['duration'])-float(av['duration']))}
         print(f'{code}: {variant} embedded captions, {width}x{height}, verified')
     print(f'{code}: 4K/audio/subtitles verified ({audio_duration:.2f}s); {voices[code]}')
-(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'publication_status':'review_required','french_length':FRENCH_LENGTH,'report_durations':report_durations,'duration_adjustments':duration_adjustments,'studio_version':19,'sequence_note':'Chronological sequence fitted to measured narration; no simulated cloud motion','track_points':observed_track(D),'track_note':'Recorded bulletin positions only; satellite times are independent','graphic_language':GRAPHIC,'logo_included':LOGO,'subtitle_layout':'V14 fixed safe area, sentence timed'},indent=2,ensure_ascii=False))
+(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'publication_status':'review_required','french_length':FRENCH_LENGTH,'report_durations':report_durations,'duration_adjustments':duration_adjustments,'studio_version':20,'quality_checks':quality_checks,'sequence_note':'Chronological sequence fitted to measured narration; no simulated cloud motion','track_points':observed_track(D),'track_note':'Recorded bulletin positions only; satellite times are independent','graphic_language':GRAPHIC,'logo_included':LOGO,'subtitle_layout':'V14 fixed safe area, sentence timed'},indent=2,ensure_ascii=False))
 print('Videos rendered. Satellite included:',bool(sat))
