@@ -38,10 +38,12 @@ jobs:
       - name: Retrieve optional official satellite imagery metadata
         run: python media.py
         continue-on-error: true
+      - name: Validate studio JavaScript
+        run: node --check v9.js
       - name: Stage public files
         run: |
           mkdir -p _site
-          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css manifest.webmanifest icon.svg sw.js _site/
+          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css studio-logo.png manifest.webmanifest icon.svg sw.js _site/
           if test -f archive.json; then cp archive.json _site/; fi
           if test -f media.json; then cp media.json _site/; fi
       - uses: actions/upload-pages-artifact@v3
