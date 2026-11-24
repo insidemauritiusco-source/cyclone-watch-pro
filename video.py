@@ -180,9 +180,15 @@ for code,script in [('fr',narration),('mfe',kreol)]:
     audio=OUT/f'voice-{code}.wav'
     voices[code]=speak(code,script,audio)
     video=OUT/f'weather-{code}.mp4'
-    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-stream_loop','-1','-i',str(motion),'-i',str(audio),'-map','0:v:0','-map','1:a:0','-c:v','copy','-af','highpass=f=70,alimiter=limit=0.9','-c:a','aac','-b:a','160k','-shortest','-movflags','+faststart',str(video)],check=True)
+    audio_duration=float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','default=noprint_wrappers=1:nokey=1',str(audio)],text=True).strip())
+    if not math.isfinite(audio_duration) or audio_duration<=0:raise ValueError('Invalid narration duration')
+    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-stream_loop','-1','-i',str(motion),'-i',str(audio),'-map','0:v:0','-map','1:a:0','-c:v','copy','-af','highpass=f=70,alimiter=limit=0.9','-c:a','aac','-b:a','160k','-t',f'{audio_duration:.6f}','-movflags','+faststart',str(video)],check=True)
     probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-of','json',str(video)]))
     assert any(x.get('codec_type')=='video' and x.get('width')==2160 and x.get('height')==3840 for x in probe['streams'])
     assert any(x.get('codec_type')=='audio' for x in probe['streams'])
+    video_stream=next(x for x in probe['streams'] if x['codec_type']=='video')
+    audio_stream=next(x for x in probe['streams'] if x['codec_type']=='audio')
+    assert abs(float(video_stream['duration'])-float(audio_stream['duration']))<0.15, 'Video and narration duration mismatch'
+    print(f'{code}: verified matching video and audio duration ({audio_duration:.2f}s)')
 (OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':{'fr':'weather-fr.mp4','mfe':'weather-mfe.mp4'}},indent=2,ensure_ascii=False))
 print('Videos rendered. Satellite included:',bool(sat))
