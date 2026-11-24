@@ -44,24 +44,39 @@ line(54,222,'SOURCE MMS CONSULTÉE' if fresh else 'DONNÉES NON VÉRIFIÉES',27,
 line(54,274,name,48,bold=True)
 line(54,353,'Observation : '+obs,29,'#b9d6e0')
 rect((54,418,1026,1095),'#102337',10)
-sat=None; image_time=None; image_url=None
-try:
-    m=json.loads((ROOT/'media.json').read_text())
-    url=m['satellite']['url']; p=urllib.parse.urlparse(url)
-    if p.scheme!='https' or p.hostname!='metservice.intnet.mu' or not p.path.startswith('/mmsimages/'): raise ValueError('Unapproved image source')
-    capture=dt.datetime.fromisoformat(m['satellite']['captured_at'])
-    if capture.tzinfo is None:raise ValueError('Capture time lacks timezone')
-    if not -600 <= (now-capture).total_seconds() <= 24*3600: raise ValueError('Image is not recent')
+sat=None; image_time=None; image_url=None; frame_images=[]
+def fetch_frame(item):
+    url=item['url']; p=urllib.parse.urlparse(url)
+    if p.scheme!='https' or p.hostname!='metservice.intnet.mu' or not p.path.startswith('/mmsimages/'):raise ValueError('Unapproved source')
+    capture=dt.datetime.fromisoformat(item['captured_at'])
+    if capture.tzinfo is None or not -600<=(now-capture).total_seconds()<=86400:raise ValueError('Invalid capture time')
     req=urllib.request.Request(url,headers={'User-Agent':'InsideMauritiusCycloneWatch/1.0','Referer':'https://metservice.intnet.mu/satellite-imagery.php','Accept':'image/*'})
-    with urllib.request.urlopen(req,timeout=25) as response:
+    with urllib.request.urlopen(req,timeout=12) as response:
         end=urllib.parse.urlparse(response.geturl())
-        if end.scheme!='https' or end.hostname!='metservice.intnet.mu' or not end.path.startswith('/mmsimages/'):raise ValueError('Unexpected source redirect')
+        if end.scheme!='https' or end.hostname!='metservice.intnet.mu' or not end.path.startswith('/mmsimages/'):raise ValueError('Unexpected redirect')
         raw=response.read(15_000_001)
     if len(raw)>15_000_000:raise ValueError('Image too large')
     import io
-    with Image.open(io.BytesIO(raw)) as src: sat=ImageOps.contain(src.convert('RGB'),(1900,1110),Image.Resampling.LANCZOS)
-    image_time=capture.strftime('%d %b %Y %H:%M UTC');image_url=url
-except Exception as e: print('Satellite unavailable:',str(e))
+    with Image.open(io.BytesIO(raw)) as src:
+        if src.width*src.height>30_000_000:raise ValueError('Image dimensions too large')
+        image=ImageOps.contain(src.convert('RGB'),(1900,1110),Image.Resampling.LANCZOS)
+    return (capture,image,url)
+try:
+    m=json.loads((ROOT/'media.json').read_text())
+    latest=m.get('satellite')
+    if latest:
+        frame_images.append(fetch_frame(latest))
+        from concurrent.futures import ThreadPoolExecutor
+        def attempt(item):
+            try:return fetch_frame(item)
+            except Exception as e:print('Animation frame unavailable:',str(e));return None
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            extra=list(pool.map(attempt,[x for x in m.get('frames',[]) if x['url']!=latest['url']][-7:]))
+        frame_images.extend(x for x in extra if x)
+        frame_images=sorted({f[0]:f for f in frame_images}.values(),key=lambda f:f[0])
+        capture,sat,image_url=frame_images[-1]
+        image_time=capture.strftime('%d %b %Y %H:%M UTC')
+except Exception as e:print('Satellite unavailable:',str(e))
 if sat:
     im.paste(sat,((W-sat.width)//2, (465*2)+(1110-sat.height)//2))
     line(76,430,'IMAGE SATELLITE MMS / METEOSAT',24,'#b9d6e0',True)
@@ -100,6 +115,26 @@ line(54,1750,'Ni prévision, ni alerte officielle. Image et observation',22,'#b9
 line(54,1782,'peuvent avoir des heures différentes.',22,'#b9d6e0')
 rect((0,1857,1080,1920),'#d6393c');line(54,1871,'mr.insidemauritius.com/cyclone/',30,'white',True)
 poster=OUT/'weather-4k.png';im.save(poster)
+# Real chronological frames, no motion interpolation. A small animated news strip is
+# explicitly decorative, never a depiction of wind or projected motion.
+import tempfile
+TMP=pathlib.Path(tempfile.mkdtemp(prefix='weather-frames-'))
+frames=[]
+for i,(captured,frame,url) in enumerate(frame_images):
+    shot=im.copy(); d=ImageDraw.Draw(shot)
+    d.rectangle((112,924,2048,2048),fill='#102337')
+    shot.paste(frame,((W-frame.width)//2,930+(1110-frame.height)//2))
+    d.rectangle((112,2050,2048,2182),fill='#102337')
+    d.text((152,2058),'Image : '+captured.strftime('%d %b %Y %H:%M UTC'),font=font(25,True),fill='#b9d6e0')
+    d.text((152,2123),'Séquence observée · aucune interpolation' if len(frame_images)>1 else 'Image unique · aucune animation des nuages',font=font(20),fill='#b9d6e0')
+    path=TMP/f'frame-{i:02d}.png';shot.save(path);frames.append(path)
+if not frames:frames=[poster]
+# A short sequence clip is looped under each narration. Source timestamps remain visible.
+concat=TMP/'frames.txt'
+concat.write_text(''.join("file '"+str(p)+"'\nduration 1.5\n" for p in frames)+"file '"+str(frames[-1])+"'\n")
+motion=TMP/'motion.mp4'
+subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-f','concat','-safe','0','-i',str(concat),'-vf',"fps=24,drawbox=x=0:y=0:w=iw:h=24:color=0x42d9ee:t=fill,format=yuv420p",'-c:v','libx264','-preset','ultrafast','-crf','23','-threads','4','-movflags','+faststart',str(motion)],check=True)
+print('Timestamped satellite frames:',len(frame_images))
 narration=f"Inside Mauritius, veille cyclonique. {name}. Observation : {obs}. "
 if fresh:
     if S.get('pressure') is not None:narration+=f"Pression centrale, {S['pressure']} hectopascals. "
@@ -118,14 +153,36 @@ if fresh:
     kreol+=f"Pou Moris, {krwarning}. "
 else:kreol+="Kondision aktiel pa verifie. "
 kreol+=("Zimaz satelit pibliye par servis meteo. " if sat else "Zimaz satelit pa disponib. ")+"Swiv avertisman ofisiel servis meteo Moris."
+# Normalize date/time and numeric speech; keep original display values on the video.
+def spoken(text,code):
+    months={'January':'zanvie' if code=='mfe' else 'janvier','February':'fevriye' if code=='mfe' else 'février','March':'mars','April':'avril','May':'me' if code=='mfe' else 'mai','June':'zin' if code=='mfe' else 'juin','July':'zilye' if code=='mfe' else 'juillet','August':'out' if code=='mfe' else 'août','September':'septam' if code=='mfe' else 'septembre','October':'oktob' if code=='mfe' else 'octobre','November':'novam' if code=='mfe' else 'novembre','December':'desam' if code=='mfe' else 'décembre'}
+    for a,z in months.items():text=re.sub(r'\b'+a+r'\b',z,text,flags=re.I)
+    text=re.sub(r'\b0?(\d{1,2})\s*AM\b',lambda m:m.group(1)+(' er gramatin' if code=='mfe' else ' heures du matin'),text,flags=re.I)
+    text=re.sub(r'\b(\d+)\.0\b',r'\1',text)
+    text=re.sub(r'\bB0?(\d+)\b',r'B \1',text)
+    return text
+narration=spoken(narration,'fr');kreol=spoken(kreol,'mfe')
+(OUT/'narration-fr.txt').write_text(narration)
 (OUT/'narration-mfe.txt').write_text(kreol)
+voices={}
+# Prefer a licensed neural French model, with transparent fallback. Kreol remains
+# an approximation until a native-language engine or reviewed recording is supplied.
+def speak(code,script,audio):
+    model=ROOT/'voice-model'/'fr_FR-siwis-medium.onnx'
+    if model.exists():
+        try:
+            subprocess.run(['python','-m','piper','--model',str(model),'--output_file',str(audio)],input=script,text=True,check=True,timeout=120)
+            return 'Piper SIWIS neural French (CC BY 4.0)' if code=='fr' else 'Kreol script / Piper French neural approximation; review pronunciation'
+        except Exception as e:print('Neural voice unavailable:',str(e))
+    subprocess.run(['espeak-ng','-v','fr','-s','140' if code=='mfe' else '150','-w',str(audio),script],check=True)
+    return 'French synthetic fallback' if code=='fr' else 'Kreol script / French synthetic fallback; review pronunciation'
 for code,script in [('fr',narration),('mfe',kreol)]:
     audio=OUT/f'voice-{code}.wav'
-    subprocess.run(['espeak-ng','-v','fr','-s','145' if code=='mfe' else '155','-w',str(audio),script],check=True)
+    voices[code]=speak(code,script,audio)
     video=OUT/f'weather-{code}.mp4'
-    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-loop','1','-framerate','24','-i',str(poster),'-i',str(audio),'-vf','fade=t=in:st=0:d=0.45,format=yuv420p','-c:v','libx264','-preset','ultrafast','-crf','22','-threads','4','-c:a','aac','-b:a','128k','-shortest','-movflags','+faststart',str(video)],check=True)
+    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-stream_loop','-1','-i',str(motion),'-i',str(audio),'-map','0:v:0','-map','1:a:0','-c:v','copy','-af','highpass=f=70,alimiter=limit=0.9','-c:a','aac','-b:a','160k','-shortest','-movflags','+faststart',str(video)],check=True)
     probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-of','json',str(video)]))
     assert any(x.get('codec_type')=='video' and x.get('width')==2160 and x.get('height')==3840 for x in probe['streams'])
     assert any(x.get('codec_type')=='audio' for x in probe['streams'])
-(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':{'fr':'French synthetic speech','mfe':'Kreol Morisien text using French speech approximation'},'videos':{'fr':'weather-fr.mp4','mfe':'weather-mfe.mp4'}},indent=2,ensure_ascii=False))
+(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':{'fr':'weather-fr.mp4','mfe':'weather-mfe.mp4'}},indent=2,ensure_ascii=False))
 print('Videos rendered. Satellite included:',bool(sat))

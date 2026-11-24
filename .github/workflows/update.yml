@@ -64,6 +64,7 @@ jobs:
           if test -f _video/source.json && test -f _video/weather-fr.mp4 && test -f _video/weather-mfe.mp4; then
             mkdir -p _site/video
             cp _video/source.json _video/weather-fr.mp4 _video/weather-mfe.mp4 _site/video/
+            for f in narration-fr.txt narration-mfe.txt; do if test -f "_video/$f"; then cp "_video/$f" _site/video/; fi; done
           fi
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -36,5 +36,28 @@ try:
         url,t=max(eligible,key=lambda x:x[1]);result['satellite']={'url':url,'captured_at':t.isoformat()}
     else:result['error']='No recent timestamped official satellite image found'
 except Exception as e:result['error']=str(e)
+# The MMS satellite animation page embeds satellite-images.php.
+# Read it separately; never mix satellite products or invent frames.
+result['frames']=[]
+try:
+    main=result.get('satellite')
+    if main:
+        product=lambda u: re.sub(r'\s+20\d{2}-\d{2}-\d{2}\s+\d{4}.*$', '', re.sub(r'^20\d{2}-\d{2}-\d{2}_[^_]+_', '', urllib.parse.unquote(urllib.parse.urlsplit(u).path.rsplit('/',1)[-1]))).strip().lower()
+        candidates={main['url']:datetime.datetime.fromisoformat(main['captured_at'])}
+        for page in ('satellite-images.php',):
+            req=urllib.request.Request(BASE+page,headers={'User-Agent':'InsideMauritiusCycloneWatch/1.0'})
+            with urllib.request.urlopen(req,timeout=12) as r:
+                html=r.read(2000000).decode(r.headers.get_content_charset() or 'utf-8',errors='replace')
+            p=Images();p.feed(html);candidates.update(p.candidates)
+            # Some animation galleries list the images as JavaScript strings.
+            for raw in re.findall(r"""['"]([^'"\r\n]*mmsimages/[^'"\r\n]+\.(?:jpg|jpeg|png|webp))['"]""",html,re.I):
+                try:
+                    url=normalize(raw); t=capture(url) if url else None
+                    if t:candidates[url]=t
+                except ValueError:pass
+        matching={t:u for u,t in candidates.items() if product(u)==product(main['url']) and -600<=(now-t).total_seconds()<=86400}
+        result['frames']=[{'url':u,'captured_at':t.isoformat()} for t,u in sorted(matching.items())[-8:]]
+except Exception as e:
+    result['animation_error']=str(e)
 pathlib.Path('media.json').write_text(json.dumps(result,indent=2))
 print('Satellite metadata:',json.dumps(result))
