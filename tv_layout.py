@@ -131,6 +131,10 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None, 
         if count==1:msg+=(' · point unique, pas de trajectoire' if language=='fr' else ' · enn sel pwin, pena trajektwar')
     else:msg='Aucun point confirmé' if language=='fr' else 'Pena pwin konfirme'
     line(62,1075,msg,17,'#b9d6e0',True,maxw=940)
+    # V23 broadcast graphics: a small observed-position progress strip, never a forecast.
+    if count:
+        box(62,1100,940,3,'#294558')
+        box(62,1100,max(1,940*shown/count),3,'#42d9ee')
     # Animate emphasis only, never the measured values.
     stats=[(t['pressure'],data['pressure']),(t['speed'],data['speed']),(t['distance'],data['distance']),(t['direction'],data['direction'])]
     for i,(label,val) in enumerate(stats):

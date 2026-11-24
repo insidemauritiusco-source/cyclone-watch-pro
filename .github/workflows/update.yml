@@ -60,6 +60,8 @@ jobs:
           node --check v20.js && node test-v20.cjs
           node --check v21.js && node test-v21.cjs
           node --check v22.js && node test-v22.cjs
+          node --check v23.js && node test-v23.cjs
+          python -m py_compile video.py tv_layout.py
           python -m py_compile regional_sources.py
       - name: Check regional official bulletin page reachability
         run: python regional_sources.py
@@ -80,7 +82,7 @@ jobs:
       - name: Stage public files
         run: |
           mkdir -p _site
-          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js v15.js v15.css v17.js v18.js v19.js v20.js v21.js v22.js voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
+          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js v15.js v15.css v17.js v18.js v19.js v20.js v21.js v22.js v23.js voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
           if test -f archive.json; then cp archive.json _site/; fi
           if test -f broadcast-archive.json; then cp broadcast-archive.json _site/; fi
           if test -f media.json; then cp media.json _site/; fi
