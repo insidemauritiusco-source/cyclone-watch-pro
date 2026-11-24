@@ -79,3 +79,64 @@ body.v27Day .map svg text {fill:#fff;stroke:#132b40}
 body.v27Day .map svg .forecastLabel {fill:#ffda72}
 @media(min-width:2000px){body.v27Monitor header,body.v27Monitor footer {font-size:clamp(14px,0.75vw,26px)}}
 @media(max-height:480px){.v27Menu[open]{max-height:40dvh}.v27Menu .layerOptions{gap:3px}}
+
+/* V28: compact map-first layout, without changing the geographic raster. */
+.v28Quick{display:flex;gap:4px;flex-wrap:wrap;max-width:210px}
+.v28Quick button{font-size:11px;min-height:36px;padding:6px 8px}
+#tvSummary[hidden]{display:none!important}
+#tvSummary{display:flex;flex-basis:100%;align-items:center;flex-wrap:wrap;gap:6px 18px;padding:7px 10px;border:1px solid #36536c;border-radius:8px;background:#102337}
+#tvSummary strong{color:var(--cyan);font-size:1.2em}
+#tvSummary span{overflow-wrap:anywhere}
+#tvSummary small{display:block!important;font-size:.8em;flex-basis:100%}
+#forecastPanel:focus{outline:2px solid #42d9ee;outline-offset:-2px}
+body.v28TV main{grid-template-columns:minmax(0,1fr)}
+body.v28TV aside{position:absolute;right:0;top:0;bottom:0;width:min(92%,420px);z-index:4}
+body.v28TV header{padding:6px 12px}
+body.v28TV header a{display:none}
+body.v28TV .mapfoot{background:#081727f2}
+body.v28TV header strong{font-size:clamp(18px,2vw,44px)}
+@media(max-width:850px){
+ header{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:4px 6px;padding:6px 8px}
+ header img{width:30px;height:30px}
+ header>div:first-of-type{grid-column:2/-1;min-width:0}
+ header>div:first-of-type small{font-size:8px}
+ header #clock{grid-column:1/-1;font-size:11px}
+ header a{grid-column:1/-1;font-size:11px}
+ header button{padding:6px 5px;min-height:34px;font-size:11px;white-space:nowrap}
+ #tvSummary{grid-column:1/-1;font-size:11px;padding:5px}
+ body.v27Monitor header>div:first-of-type{grid-column:1/-1}
+ .layers{gap:4px}
+ .zoomtools button{min-width:38px;min-height:38px}
+ .layerMenu{padding:4px 7px}
+ .layerMenu summary{min-height:22px;font-size:12px}
+ .v28Quick{max-width:150px}
+ .v28Quick button{font-size:10px;min-height:32px;padding:5px}
+ aside,body.v27Monitor aside,body.v28TV aside{top:auto;bottom:0;left:0;right:0;width:100%;height:auto;max-height:55%;border-radius:13px 13px 0 0;border:1px solid var(--line);padding:8px 10px;box-shadow:0 -8px 24px #0009}
+ aside .panelhead{position:sticky;top:-8px;background:#0b1a2b;z-index:2;padding:4px 0}
+ aside h1{font-size:19px;margin:6px 0 3px}
+ aside .metrics{margin:6px 0;gap:4px;grid-template-columns:repeat(2,minmax(0,1fr))}
+ aside .metrics div,aside .panel{padding:6px 8px;font-size:12px}
+ aside .metrics b{font-size:15px;margin-top:3px}
+ aside .panel{margin:5px 0}
+ aside .panel p{margin:4px 0;font-size:12px}
+ aside small{font-size:10px}
+ footer{gap:4px;padding:5px 8px}
+ footer #frameTime{font-size:10px}
+}
+@media(max-width:850px) and (max-height:500px) and (orientation:landscape){
+ header{display:flex;flex-wrap:wrap}
+ header>div:first-of-type{flex:1}
+ header #clock{font-size:10px}
+ header a{display:none}
+ aside,body.v27Monitor aside,body.v28TV aside{top:0;bottom:0;left:auto;width:min(49%,350px);height:100%;max-height:none;border-radius:0}
+ .layers{flex-direction:row;flex-wrap:wrap;max-width:70%;align-items:flex-start}
+ .v28Quick{max-width:160px}
+ .layerMenu[open]{max-height:45dvh}
+}
+@media(min-width:1600px){
+ body.v28TV{font-size:clamp(16px,.85vw,30px)}
+ body.v28TV header button,body.v28TV footer button,body.v28TV footer select{font-size:inherit}
+ body.v28TV .mapstatus,body.v28TV .mapfoot,body.v28TV #frameTime{font-size:clamp(12px,.65vw,24px)}
+ body.v28TV footer .legend{max-width:none;font-size:inherit}
+ body.v28TV #tvSummary small{font-size:clamp(12px,.6vw,22px)}
+}
