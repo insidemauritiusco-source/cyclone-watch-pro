@@ -131,6 +131,7 @@ jobs:
           fi
           npm install --no-save --no-package-lock playwright
           node test-mobile-startup.cjs
+          node test-tracker-browser.cjs
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

@@ -8,3 +8,7 @@ assert.equal(select(d,f,n),b);assert.equal(select(d,f,n+3600000),null);assert.eq
 const hash='a'.repeat(64),m={status:'ok',source:'https://view.eumetsat.int/geoserver/wms',crs:'EPSG:4326',bounds:[43,83,-29,-4],frames:[{captured_at:'2026-11-24T10:00:00Z',sha256:hash,raw:'tracker-media/'+hash+'-raw.jpg'}]};
 assert.equal(frames(m,n).length,1);assert.equal(frames({...m,bounds:[0,1,2,3]},n).length,0);assert.equal(frames({...m,frames:[{...m.frames[0],raw:'https://example.com'}]},n).length,0);
 console.log('PASS tracker coordinate projection, matched official forecast, stale source rejection and satellite manifest validation');
+const {bearing,extent}=require('./tracker.js');
+assert.equal(bearing('South Southwest'),202.5);assert.equal(bearing('SSW'),202.5);assert.equal(bearing('stationary'),null);assert.equal(bearing('unknown'),null);
+for(const ratio of [.5,1,2,3]){const a=extent(1,ratio,[0,0]);assert.ok(a.box[2]>=1800-1e-6&&a.box[3]>=1140-1e-6);assert.ok(Math.abs(a.box[2]/a.box[3]-ratio)<1e-6);const b=extent(3,ratio,[100,100]);assert.ok(b.box.every(Number.isFinite))}
+console.log('PASS tracker viewport fit and reported direction parsing');
