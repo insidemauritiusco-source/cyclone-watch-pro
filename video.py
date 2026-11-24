@@ -11,6 +11,7 @@ if FRENCH_LENGTH not in ('long','short'):raise ValueError('Invalid report length
 from broadcast_gate import fingerprint, report_key
 from forecast_video import load_forecast, forecast_words, zoom_scene_holds
 from tv_layout import render_card, logo_transparent, ass_captions, observed_track
+from geo_satellite import build as build_geo_satellite
 GRAPHIC=os.getenv('GRAPHIC_LANGUAGE','auto')
 LOGO=os.getenv('BROADCAST_LOGO','off')=='on'
 if GRAPHIC not in ('auto','fr','mfe'):raise ValueError('Invalid graphic language')
@@ -136,6 +137,12 @@ poster=OUT/'weather-4k.png';im.save(poster)
 import tempfile
 TMP=pathlib.Path(tempfile.mkdtemp(prefix='weather-frames-'))
 motions={}; posters={}
+GEO,GEO_IMAGES=build_geo_satellite(D,FORECAST,now) if not PREVIEW else ({'status':'skipped_preview','frames':[]},{})
+print('Geographic satellite overlay:',GEO['status'],len(GEO['frames']), 'dated frames',GEO.get('reason') or '')
+def satellite_map(zoom,step,total):
+    if not GEO_IMAGES:return None
+    keys=list(GEO_IMAGES);key=keys[round(step*(len(keys)-1)/max(1,total-1))];mode='close' if zoom else 'wide'
+    return {'bounds':tuple(GEO['bounds'][mode]),'image':GEO_IMAGES[key][mode],'captured':dt.datetime.fromisoformat(key).strftime('%d/%m/%Y %H:%M'),'credit':GEO['credit']}
 def motion_for(language,audio_duration,labels):
     visual_language=GRAPHIC if GRAPHIC!='auto' else language
     long_report=language=='fr' and FRENCH_LENGTH=='long'
@@ -159,11 +166,11 @@ def motion_for(language,audio_duration,labels):
     # Separate expanded forecast scenes, one frame for each published coordinate.
     # Reuse the latest real satellite frame only as input; forecast scene is a schematic.
     if FORECAST:
-        overview=render_card(visual_language,values,None,'',len(frame_images),count,logo,forecast_step=-1)
+        overview=render_card(visual_language,values,None,'',len(frame_images),count,logo,forecast_step=-1,satellite_map=satellite_map(False,0,1+2*len(FORECAST['points'])))
         file=TMP/f'tv-{tag}-forecast-overview.png';overview.save(file);files.append(file)
         for j in range(len(FORECAST['points'])):
             for pulse in range(2):
-                card=render_card(visual_language,values,None,'',len(frame_images),count+j*2+pulse,logo,forecast_step=j,forecast_zoom=True)
+                card=render_card(visual_language,values,None,'',len(frame_images),count+j*2+pulse,logo,forecast_step=j,forecast_zoom=True,satellite_map=satellite_map(True,1+j*2+pulse,1+2*len(FORECAST['points'])))
                 file=TMP/f'tv-{tag}-forecast-{j:03d}-{pulse}.png';card.save(file);files.append(file)
     if visual_language not in posters:
         poster=OUT/f'poster-{visual_language}-4k.png'
@@ -333,5 +340,5 @@ for code,script,gender,language in [('fr',narration,'female','fr'),('fr-male',na
         quality_checks[code][variant]={'width':vv['width'],'height':vv['height'],'audio':True,'caption_check':portrait_ass.is_file() and landscape_ass.is_file(),'caption_mode':'ASS render completed; visual placement requires review','av_delta':abs(float(vv['duration'])-float(av['duration']))}
         print(f'{code}: {variant} embedded captions, {width}x{height}, verified')
     print(f'{code}: 4K/audio/subtitles verified ({audio_duration:.2f}s); {voices[code]}')
-(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'report_key':report_key(D,FORECAST),'official_forecast':FORECAST,'forecast_source':'Météo-France RSMC La Réunion via WMO' if FORECAST else None,'forecast_note':'Issued positions only, no interpolated positions or forecast landfall','publication_status':'review_required','french_length':FRENCH_LENGTH,'report_durations':report_durations,'duration_adjustments':duration_adjustments,'studio_version':25,'posters':posters,'poster_resolution':'2160x3840','poster_publication_status':'review_required','quality_checks':quality_checks,'sequence_note':'Chronological sequence fitted to measured narration; no simulated cloud motion','track_points':observed_track(D),'track_note':'Recorded bulletin positions only; satellite times are independent','graphic_language':GRAPHIC,'logo_included':LOGO,'subtitle_layout':'V24 larger type, dedicated safe area, sentence timed'},indent=2,ensure_ascii=False))
+(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'report_key':report_key(D,FORECAST),'official_forecast':FORECAST,'geographic_satellite_overlay':GEO,'forecast_source':'Météo-France RSMC La Réunion via WMO' if FORECAST else None,'forecast_note':'Issued positions only, no interpolated positions or forecast landfall','publication_status':'review_required','french_length':FRENCH_LENGTH,'report_durations':report_durations,'duration_adjustments':duration_adjustments,'studio_version':25,'posters':posters,'poster_resolution':'2160x3840','poster_publication_status':'review_required','quality_checks':quality_checks,'sequence_note':'Chronological sequence fitted to measured narration; no simulated cloud motion','track_points':observed_track(D),'track_note':'Recorded bulletin positions only; satellite times are independent','graphic_language':GRAPHIC,'logo_included':LOGO,'subtitle_layout':'V24 larger type, dedicated safe area, sentence timed'},indent=2,ensure_ascii=False))
 print('Videos rendered. Satellite included:',bool(sat))

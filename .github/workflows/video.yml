@@ -35,6 +35,8 @@ on:
       - 'video.py'
       - 'tv_layout.py'
       - 'forecast_video.py'
+      - 'geo_satellite.py'
+      - 'test-geo-satellite.py'
       - 'official_forecast.py'
       - 'media.py'
       - 'broadcast_gate.py'
@@ -104,9 +106,10 @@ jobs:
           GRAPHIC_LANGUAGE: ${{ inputs.graphic_language || 'auto' }}
           BROADCAST_LOGO: ${{ inputs.logo || 'off' }}
         run: |
-          python -m py_compile video.py tv_layout.py forecast_video.py
+          python -m py_compile video.py tv_layout.py forecast_video.py geo_satellite.py
           python test-v24-layout.py
           python test-forecast-video.py
+          python test-geo-satellite.py
           python video.py
       - uses: actions/upload-artifact@v4
         if: steps.gate.outputs.render == 'true'
