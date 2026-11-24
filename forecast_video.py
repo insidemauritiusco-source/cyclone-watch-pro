@@ -43,14 +43,48 @@ def spoken_time(s,language):
     return f"le {x.day}/{x.month}, {x.hour} er"+(f" {x.minute}" if x.minute else "")+", ler Moris"
 def forecast_words(b,language):
     if not b:return "Aucune trajectoire prévisionnelle officielle correspondante n'est disponible." if language=='fr' else "Pena trajektwar previzionel ofisiel verifie."
-    end=b['points'][-1]; start=spoken_time(b['issued_at'],language)
+    start=spoken_time(b['issued_at'],language)
     if language=='fr':
-        return f"Prévisions de Météo-France, bulletin émis {start}. Les points jaunes indiquent les positions prévues jusqu'à {end['hours']} heures après l'émission du bulletin. Ce ne sont pas des observations ni une prévision d'impact sur Maurice."
-    return f"Previzion Meteo France, bilten emet {start}. Bann pwin zonn indik pozision prevwar ziska {end['hours']} er apre bilten. Sa pa bann observasion ni enn previzion limpakt lor Moris."
+        sentences=[f"Prévisions de Météo-France, bulletin émis {start}."]
+        for p in b['points']:
+            sentences.append(f"À plus {p['hours']} heures, position prévue {spoken_time(p['valid_at'],language)}.")
+        sentences.append("Ces points jaunes sont des prévisions incertaines, pas des observations ni une prévision d'impact sur Maurice.")
+    else:
+        sentences=[f"Previzion Meteo France, bilten emet {start}."]
+        for p in b['points']:
+            sentences.append(f"A plis {p['hours']} er, pozision prevwar {spoken_time(p['valid_at'],language)}.")
+        sentences.append("Bann pwin zonn se previzion insertin, pa observasion ni enn previzion limpakt lor Moris.")
+    return ' '.join(sentences)
+
+def zoom_bounds(points):
+    """Stable close-up for the entire issued track, not a forecast computation."""
+    if not points or not all(inside(p) for p in points):raise ValueError('Invalid zoom positions')
+    xs=[p['lon'] for p in points];ys=[p['lat'] for p in points]
+    cx=(min(xs)+max(xs))/2;cy=(min(ys)+max(ys))/2
+    dx=max(2.4,(max(xs)-min(xs))*1.65);dy=max(2.4,(max(ys)-min(ys))*1.65)
+    # Equal degrees per pixel on the schematic 900 x 570 plotting area.
+    dx=max(dx,dy*900/570);dy=max(dy,dx*570/900)
+    return cx-dx/2,cx+dx/2,cy-dy/2,cy+dy/2
+
 def scene_holds(count,forecast_count,audio_duration,labels):
-    """Keep actual satellite sequence and start forecast scenes at the spoken forecast section."""
+    """Legacy test helper for the unzoomed sequence."""
     if not forecast_count:return [audio_duration/count]*count
     boundary=next((a for a,_,s in labels if s.startswith(('Prévisions de Météo-France','Previzion Meteo France'))),audio_duration*.65)
-    # Preserve positive holds even with an unexpectedly short script.
     boundary=max(audio_duration*.15,min(audio_duration*.85,boundary))
     return [boundary/count]*count+[(audio_duration-boundary)/forecast_count]*forecast_count
+
+def zoom_scene_holds(count,points,duration,labels):
+    """Overview at the forecast introduction, then each point at its spoken cue.
+    End of last point is held through the closing safety narration."""
+    if not points:return [duration/count]*count
+    intro=next((a for a,_,s in labels if s.startswith(('Prévisions de Météo-France','Previzion Meteo France'))),None)
+    cues=[]
+    for p in points:
+        prefixes=(f"À plus {p['hours']} heures,",f"A plis {p['hours']} er,")
+        cues.append(next((a for a,_,s in labels if s.startswith(prefixes)),None))
+    if intro is None or any(c is None for c in cues) or not 0<intro<cues[0] or any(b<=a for a,b in zip(cues,cues[1:])) or cues[-1]>=duration:
+        raise ValueError('Forecast narration cue missing or out of order')
+    holds=[intro/count]*count+[cues[0]-intro]
+    for a,b in zip(cues,cues[1:]+[duration]):
+        holds.extend([(b-a)/2,(b-a)/2])
+    return holds

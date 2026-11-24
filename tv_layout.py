@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 from collections import deque
 from pathlib import Path
 import textwrap, re, math
-from forecast_video import local_time
+from forecast_video import local_time, zoom_bounds
 FONT=Path('/usr/share/fonts/truetype/dejavu')
 W,H=2160,3840
 def font(size,bold=False):
@@ -51,7 +51,7 @@ def observed_track(data):
         except (KeyError,ValueError,TypeError):continue
     return [points[x] for x in sorted(points)]
 
-def render_card(language, data, frame, captured, frame_count, phase, logo=None, poster=False, forecast_step=None):
+def render_card(language, data, frame, captured, frame_count, phase, logo=None, poster=False, forecast_step=None, forecast_zoom=False):
     t=dict(TEXT[language]);
     if data.get('forecast') and data.get('fresh'):
         t['ticker3']='Prévisions datées et incertaines · pas une alerte officielle' if language=='fr' else 'Previzion date ek insertin · pa enn alert ofisiel'
@@ -111,22 +111,44 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None, 
     bounds=points+([b['anchor']]+future if forecast_mode else [])
     lo=min([43]+[p['lon']-2 for p in bounds]);hi=max([83]+[p['lon']+2 for p in bounds])
     south=min([-29]+[p['lat']-2 for p in bounds]);north=max([-4]+[p['lat']+2 for p in bounds])
+    zoom=forecast_mode and forecast_zoom
+    if zoom:lo,hi,south,north=zoom_bounds(bounds)
     top,height=(395,570) if forecast_mode else (958,174)
+    if zoom:line(745,357,'ZOOM AUTO' if language=='fr' else 'ZOOM AUTO',18,'#42d9ee',True,maxw=245)
     def xy(lat,lon):return ((86+(lon-lo)/(hi-lo)*900)*2,(top+(north-lat)/(north-south)*height)*2)
-    for lon in range(math.ceil(lo/5)*5,math.floor(hi/5)*5+1,5):
+    grid=1 if zoom and hi-lo<12 else 2 if zoom and hi-lo<25 else 5
+    for lon in range(math.ceil(lo/grid)*grid,math.floor(hi/grid)*grid+1,grid):
         x,y=xy(north,lon);d.line((x,y,x,xy(south,lon)[1]),fill='#294558',width=2)
         d.text((x+4,xy(north,lon)[1]+2),str(lon)+'°E',font=font(10),fill='#7896a8')
-    for lat in range(math.ceil(south/5)*5,math.floor(north/5)*5+1,5):
+    for lat in range(math.ceil(south/grid)*grid,math.floor(north/grid)*grid+1,grid):
         x,y=xy(lat,lo);d.line((x,y,xy(lat,hi)[0],y),fill='#294558',width=2)
         d.text((x+2,y-20),str(abs(lat))+'°S',font=font(10),fill='#7896a8')
     for place,lat,lon in [('Madagascar',-19.4,46.7),('Maurice' if language=='fr' else 'Moris',-20.2,57.5),('Rodrigues',-19.71,63.42),('Agalega',-10.4,56.6),('Réunion',-21.13,55.53)]:
-        x,y=xy(lat,lon);d.ellipse((x-5,y-5,x+5,y+5),fill='#bbd4de')
-        d.text((x+8,y+7),place,font=font(13),fill='#bbd4de')
+        if not (lo<=lon<=hi and south<=lat<=north):continue
+        x,y=xy(lat,lon);d.ellipse((x-7,y-7,x+7,y+7),fill='#bbd4de')
+        d.text((x+10,y+8),place,font=font(18 if forecast_mode else 13,forecast_mode),fill='#bbd4de',stroke_width=2 if forecast_mode else 0,stroke_fill='#091d2d')
+    # Same simplified Madagascar outline as the existing dashboard; not a navigation map.
+    coast=[(43.3,-12),(46,-12.2),(49.3,-12),(50.1,-15.5),(49,-17.7),(48.5,-20.2),(47.2,-23.5),(44.7,-25.5),(43.4,-24),(43.6,-20.5),(44.8,-17),(46.1,-15.4)]
+    if forecast_mode and not zoom:
+        d.line([xy(lat,lon) for lon,lat in coast+[coast[0]]],fill='#8eb5c4',width=4)
+    # The close-up retains a separate regional reference inset below the plot.
+    # Its outline is schematic and its locator rectangle denotes only map extent.
+    if zoom:
+        bx0,by0,bw,bh=1440,1990,560,300
+        d.rounded_rectangle((bx0,by0,bx0+bw,by0+bh),radius=12,fill='#102337',outline='#466e83',width=3)
+        rlo=min(43,lo);rhi=max(83,hi);rs=min(-29,south);rn=max(-4,north)
+        def mini(lat,lon):return bx0+20+(lon-rlo)/(rhi-rlo)*(bw-40),by0+52+(rn-lat)/(rn-rs)*(bh-80)
+        d.text((bx0+14,by0+9),'RÉGION' if language=='fr' else 'REZION',font=font(16,True),fill='#c4deea')
+        d.line([mini(lat,lon) for lon,lat in coast+[coast[0]]],fill='#8eb5c4',width=3)
+        for n,lat,lon,off in [('Moris' if language=='mfe' else 'Maurice',-20.2,57.5,(-55,15)),('Rodrigues',-19.71,63.42,(7,-26)),('Agalega',-10.4,56.6,(6,-25))]:
+            xx,yy=mini(lat,lon);d.ellipse((xx-4,yy-4,xx+4,yy+4),fill='white');d.text((xx+off[0],yy+off[1]),n,font=font(11,True),fill='#d8ecf4')
+        x1,y1=mini(north,lo);x2,y2=mini(south,hi)
+        d.rectangle((x1,y1,x2,y2),outline='#42d9ee',width=4)
     shown=count if forecast_mode or poster else min(count,1+phase) if count else 0
     coords=[xy(p['lat'],p['lon']) for p in points[:shown]]
     if len(coords)>1:d.line(coords,fill='#42d9ee',width=5)
     for i,(x,y) in enumerate(coords):
-        r=11 if i==len(coords)-1 else 7
+        r=(18 if forecast_mode else 11) if i==len(coords)-1 else 7
         d.ellipse((x-r,y-r,x+r,y+r),fill='#42d9ee',outline='white',width=2)
         d.text((x+15,y-22),str(i+1),font=font(12,True),fill='white')
     # Arrow anchored only on the latest recorded center, never on a forecast point.
@@ -135,36 +157,47 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None, 
     aliases='n nne ne ene e ese se sse s ssw sw wsw w wnw nw nnw'.split()
     bearings={k:i*22.5 for i,k in enumerate(directions)};bearings.update({k:i*22.5 for i,k in enumerate(aliases)})
     if data.get('fresh') and shown==count and coords and direction in bearings:
-        bx,by=coords[-1];ang=math.radians(bearings[direction]);length=43 if phase%2 else 34
+        bx,by=coords[-1];ang=math.radians(bearings[direction]);length=(88 if phase%2 else 76) if forecast_mode else (43 if phase%2 else 34)
+        if forecast_mode:
+            rr=29 if phase%2 else 25
+            d.ellipse((bx-rr,by-rr,bx+rr,by+rr),outline='#42d9ee',width=4)
+            d.arc((bx-22,by-22,bx+22,by+22),start=20+phase%2*40,end=155+phase%2*40,fill='#42d9ee',width=5)
+            d.arc((bx-22,by-22,bx+22,by+22),start=200+phase%2*40,end=335+phase%2*40,fill='#42d9ee',width=5)
         ux,uy=math.sin(ang),-math.cos(ang);ex,ey=bx+length*ux,by+length*uy
-        d.line((bx+13*ux,by+13*uy,ex,ey),fill='#42d9ee',width=5)
-        d.polygon([(ex,ey),(ex-13*ux-7*uy,ey-13*uy+7*ux),(ex-13*ux+7*uy,ey-13*uy-7*ux)],fill='#42d9ee')
+        head,half=(24,13) if forecast_mode else (13,7)
+        gap=30 if forecast_mode else 13
+        d.line((bx+gap*ux,by+gap*uy,ex,ey),fill='#42d9ee',width=8 if forecast_mode else 5)
+        d.polygon([(ex,ey),(ex-head*ux-half*uy,ey-head*uy+half*ux),(ex-head*ux+half*uy,ey-head*uy-half*ux)],fill='#42d9ee')
     if forecast_mode:
         def dotted(p,q):
             x,y=p;dx=q[0]-x;dy=q[1]-y;length=math.hypot(dx,dy)
             if length==0:return
-            for i in range(0,math.ceil(length),18):
-                j=min(i+7,length);d.line((x+dx*i/length,y+dy*i/length,x+dx*j/length,y+dy*j/length),fill='#ffda72',width=5)
+            for i in range(0,math.ceil(length),27 if zoom else 18):
+                j=min(i+(13 if zoom else 7),length);d.line((x+dx*i/length,y+dy*i/length,x+dx*j/length,y+dy*j/length),fill='#ffda72',width=9 if zoom else 6)
         # Start from the Météo-France bulletin reference position, not a later MMS center.
         fcoords=[xy(p['lat'],p['lon']) for p in [b['anchor']]+future]
         for p,q in zip(fcoords,fcoords[1:]):dotted(p,q)
         x,y=fcoords[0];d.rectangle((x-6,y-6,x+6,y+6),outline='#ffda72',width=3)
         for i,(x,y) in enumerate(fcoords[1:]):
-            selected=i==forecast_step;r=12 if selected else 7
-            if selected:d.ellipse((x-23,y-23,x+23,y+23),outline='#ffda72',width=3)
+            selected=i==forecast_step;r=19 if selected else 10
+            if selected:
+                rr=34 if phase%2 else 29
+                d.ellipse((x-rr,y-rr,x+rr,y+rr),outline='#ffda72',width=5)
             d.ellipse((x-r,y-r,x+r,y+r),fill='#ffda72',outline='#091d2d',width=2)
             label='+'+str(future[i]['hours'])+'h'
             # Closely spaced points retain exact positions; the active label is prioritized.
             if selected:
-                f=font(18,True);tw=d.textlength(label,font=f);lx=x-30-tw if x>1740 else x+30
-                d.text((lx,y-40),label,font=f,fill='#ffda72',stroke_width=2,stroke_fill='#091d2d')
-        p=future[forecast_step]
-        line(54,357,('Émis : ' if language=='fr' else 'Emet : ')+local_time(b['issued_at'])+' · '+str(b['bulletin_number'])+'/'+str(b['system_number']),18,'#ffda72',True)
-        line(54,980,('Prévision ' if language=='fr' else 'Previzion ')+f"+{p['hours']}h · "+local_time(p['valid_at']),27,'#ffda72',True)
-        line(54,1020,f"{abs(p['lat']):g}°S · {p['lon']:g}°E",24,'#e8f4fa',True)
-        line(54,1055,('Vent maximal moyen : ' if language=='fr' else 'Van maximal mwayin : ')+((str(p['max_wind_kt'])+' kt (10 min)') if type(p.get('max_wind_kt')) is int and 0<=p['max_wind_kt']<=200 else t['unknown']),21,'#ffda72')
-        line(54,1090,'CYAN : OBSERVATIONS / MOUVEMENT · JAUNE : PRÉVISIONS' if language=='fr' else 'SIAN : OBSERVASION / DEPLASMAN · ZONN : PREVIZION',16,'#b9d6e0',True)
-        line(54,1120,'Carte schématique · points publiés uniquement · incertitude' if language=='fr' else 'Kart skematik · pwin pibliye selman · insertitid',18,'#b9d6e0')
+                f=font(30 if zoom else 22,True);tw=d.textlength(label,font=f);lx=max(176,min(1940-tw,x+48 if x<1500 else x-48-tw));ly=max(810,min(1810,y-70))
+                d.line((x,y,lx+tw/2,ly+35),fill='#ffda72',width=3)
+                d.rounded_rectangle((lx-12,ly-5,lx+tw+12,ly+75),radius=12,fill='#162c3e',outline='#ffda72',width=3)
+                d.text((lx,ly),label,font=f,fill='#ffda72',stroke_width=1,stroke_fill='#091d2d')
+        p=future[max(0,forecast_step)]
+        line(54,357,('Émis : ' if language=='fr' else 'Emet : ')+local_time(b['issued_at'])+' · '+str(b['bulletin_number'])+'/'+str(b['system_number']),18,'#ffda72',True,maxw=690 if zoom else 940)
+        line(54,980,('Prévision ' if language=='fr' else 'Previzion ')+f"+{p['hours']}h · "+local_time(p['valid_at']) if forecast_step>=0 else ('VUE RÉGIONALE · POINTS PUBLIÉS' if language=='fr' else 'VIZION REZIONAL · PWIN PIBLIYE'),27,'#ffda72',True,maxw=650 if zoom else 940)
+        if forecast_step>=0:line(54,1020,f"{abs(p['lat']):g}°S · {p['lon']:g}°E",24,'#e8f4fa',True)
+        if forecast_step>=0:line(54,1055,('Vent maximal moyen : ' if language=='fr' else 'Van maximal mwayin : ')+((str(p['max_wind_kt'])+' kt (10 min)') if type(p.get('max_wind_kt')) is int and 0<=p['max_wind_kt']<=200 else t['unknown']),21,'#ffda72',maxw=650 if zoom else 940)
+        line(54,1090,'CYAN : OBSERVATIONS / MOUVEMENT · JAUNE : PRÉVISIONS' if language=='fr' else 'SIAN : OBSERVASION / DEPLASMAN · ZONN : PREVIZION',16,'#b9d6e0',True,maxw=650 if zoom else 940)
+        line(54,1120,'Carte schématique · points publiés uniquement · incertitude' if language=='fr' else 'Kart skematik · pwin pibliye selman · insertitid',18,'#b9d6e0',maxw=650 if zoom else 940)
         line(54,1149,'Source : Météo-France La Réunion / WMO',17,'#ffda72',True)
     else:
         if count:

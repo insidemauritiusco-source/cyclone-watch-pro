@@ -9,7 +9,7 @@ PREVIEW='--preview-only' in sys.argv
 FRENCH_LENGTH=os.getenv('FRENCH_LENGTH','long')
 if FRENCH_LENGTH not in ('long','short'):raise ValueError('Invalid report length')
 from broadcast_gate import fingerprint, report_key
-from forecast_video import load_forecast, forecast_words, scene_holds
+from forecast_video import load_forecast, forecast_words, zoom_scene_holds
 from tv_layout import render_card, logo_transparent, ass_captions, observed_track
 GRAPHIC=os.getenv('GRAPHIC_LANGUAGE','auto')
 LOGO=os.getenv('BROADCAST_LOGO','off')=='on'
@@ -159,9 +159,12 @@ def motion_for(language,audio_duration,labels):
     # Separate expanded forecast scenes, one frame for each published coordinate.
     # Reuse the latest real satellite frame only as input; forecast scene is a schematic.
     if FORECAST:
+        overview=render_card(visual_language,values,None,'',len(frame_images),count,logo,forecast_step=-1)
+        file=TMP/f'tv-{tag}-forecast-overview.png';overview.save(file);files.append(file)
         for j in range(len(FORECAST['points'])):
-            card=render_card(visual_language,values,None,'',len(frame_images),count+j,logo,forecast_step=j)
-            file=TMP/f'tv-{tag}-forecast-{j:03d}.png';card.save(file);files.append(file)
+            for pulse in range(2):
+                card=render_card(visual_language,values,None,'',len(frame_images),count+j*2+pulse,logo,forecast_step=j,forecast_zoom=True)
+                file=TMP/f'tv-{tag}-forecast-{j:03d}-{pulse}.png';card.save(file);files.append(file)
     if visual_language not in posters:
         poster=OUT/f'poster-{visual_language}-4k.png'
         capture,frame,_=frame_images[-1] if frame_images else (None,None,None)
@@ -169,12 +172,13 @@ def motion_for(language,audio_duration,labels):
         assert card.size==(2160,3840)
         card.save(poster);posters[visual_language]=poster.name
     concat=TMP/f'tv-{tag}.txt'
-    holds=scene_holds(count,len(FORECAST['points']) if FORECAST else 0,audio_duration,labels)
+    holds=zoom_scene_holds(count,FORECAST['points'] if FORECAST else [],audio_duration,labels)
+    assert len(holds)==len(files) and all(h>0 for h in holds)
     # Extra frames protect the final audio sample from concat rounding.
-    holds[-1]+=0.2
+    holds[-1]+=len(holds)/24+0.2
     concat.write_text(''.join("file '"+str(p)+f"'\nduration {hold:.6f}\n" for p,hold in zip(files,holds))+"file '"+str(files[-1])+"'\n")
     motion=TMP/f'tv-{tag}.mp4'
-    # A short header fade, then real chronological frames with a looping TV ticker.
+    # TV-style overview-to-close-up cuts preserve exact coordinates; no blended weather frames.
     subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-f','concat','-safe','0','-i',str(concat),'-vf','fps=24,fade=t=in:st=0:d=0.22,format=yuv420p','-c:v','libx264','-preset','ultrafast','-crf','23','-threads','4','-movflags','+faststart',str(motion)],check=True)
     motions[key]=motion
     return motion

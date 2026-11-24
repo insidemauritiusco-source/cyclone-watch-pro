@@ -1,5 +1,5 @@
 import datetime as dt
-from forecast_video import select_forecast,forecast_words,scene_holds,URL
+from forecast_video import select_forecast,forecast_words,scene_holds,zoom_scene_holds,zoom_bounds,URL
 from broadcast_gate import report_key
 from tv_layout import render_card
 from PIL import Image
@@ -28,3 +28,24 @@ for lang in ('fr','mfe'):
         # Verify actual forecast point color appears in the expanded map.
         assert any(n>100 and rgb==(255,218,114) for n,rgb in card.crop((72,620,2088,2360)).getcolors(1000000))
 print('PASS forecast video: matched official points, expiry, timed scenes, 4K forecast graphics and report key')
+
+# Verify source coordinates remain unchanged, and zoom fits all published points.
+import copy
+original=copy.deepcopy(b)
+lo,hi,south,north=zoom_bounds([b['anchor'],p,q,values['track'][0]])
+assert hi-lo<10 and north-south<10
+assert all(lo<x['lon']<hi and south<x['lat']<north for x in [b['anchor'],p,q])
+assert b==original
+labels=[(35,39,'Prévisions de Météo-France'),(39,44,'À plus 12 heures, position prévue'),(44,49,'À plus 24 heures, position prévue')]
+holds=zoom_scene_holds(4,[p,q],60,labels)
+assert len(holds)==9 and abs(sum(holds)-60)<.001
+assert abs(sum(holds[:5])-39)<.001 and abs(sum(holds[:7])-44)<.001
+try:
+    zoom_scene_holds(4,[p,q],60,labels[:2]);raise AssertionError('Missing speech cue accepted')
+except ValueError:pass
+for lang in ('fr','mfe'):
+    for step,zoom in [(-1,False),(0,True),(1,True)]:
+        card=render_card(lang,values,None,'',1,step+2,forecast_step=step,forecast_zoom=zoom)
+        assert card.size==(2160,3840)
+assert b==original
+print('PASS forecast auto zoom, regional inset, source coordinates unchanged and individual narration cues')
