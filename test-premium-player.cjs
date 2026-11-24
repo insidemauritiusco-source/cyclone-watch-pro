@@ -8,3 +8,9 @@ a.notEqual(p.select({...m,generated_at:'2026-11-24T13:00:00Z'}).key,p.select(m).
 a.equal(p.reviewReady([true,true,true],true,true),true);
 for(const args of [[[true,true,false],true,true],[[true,true,true],false,true],[[true,true,true],true,false],[[true,true,1],true,true]])a.equal(p.reviewReady(...args),false);
 console.log('PASS premium player: source, chronological timestamps, exact filename, version and independent review guards');
+const ov={...m,premium_satellite_forecast:'satellite-fullscreen-forecast-4k.mp4',official_forecast:{issued_at:t,anchor:{lat:-10,lon:76},points:[{lat:-11,lon:75,hours:12,valid_at:'2026-11-24T22:00:00Z'}]}};
+a.equal(p.select(ov,'forecast').file,'satellite-fullscreen-forecast-4k.mp4');
+a.notEqual(p.select(ov,'forecast').key,p.select(ov).key);
+a.equal(p.select(m,'forecast'),null);
+a.equal(p.select({...ov,official_forecast:{...ov.official_forecast,points:[{...ov.official_forecast.points[0],valid_at:t}]}},'forecast'),null);
+console.log('PASS optional forecast asset validation and variant-specific review key');

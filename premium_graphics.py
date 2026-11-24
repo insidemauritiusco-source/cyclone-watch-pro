@@ -83,14 +83,55 @@ def scale_bar(draw,rect,font,language='fr'):
     for i in range(w):
         draw.line((x+i,y,x+i,y+h),fill=palette_rgb(round(i*255/max(1,w-1))))
     draw.text((x+w+12,y-5),'0–255 · luminosité IR, pas °C' if language=='fr' else '0–255 · limier IR, pa °C',font=font,fill='#e8f4fa')
-def fullscreen_frame(image,stamp,credit,enhanced,number,total):
+def fullscreen_frame(image,stamp,credit,enhanced,number,total,bounds=None,forecast=None):
     from PIL import ImageOps,ImageFont
     im=Image.new('RGB',(3840,2160),'#091525');d=ImageDraw.Draw(im)
     font=lambda n:ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',n)
-    pic=ImageOps.contain(image.convert('RGB'),(3840,1810),Image.Resampling.LANCZOS)
-    im.paste(pic,((3840-pic.width)//2,178+(1810-pic.height)//2))
-    d.text((65,24),'INSIDE MAURITIUS | ANIMATION SATELLITE OBSERVÉE',font=font(52),fill='#42d9ee')
-    d.text((65,96),satellite_time_label(stamp)+f'   •   {number}/{total}',font=font(40),fill='white')
-    if enhanced:scale_bar(d,(65,1990,380,24),font(34))
-    d.text((65,2040),credit+' | Images datées, sans interpolation. Pas une prévision.',font=font(32),fill='#dce8f0')
+    pic=ImageOps.contain(image.convert('RGB'),(3840,1900),Image.Resampling.LANCZOS)
+    x0=(3840-pic.width)//2;y0=120+(1900-pic.height)//2
+    im.paste(pic,(x0,y0))
+    d.text((60,14),'INSIDE MAURITIUS | ANIMATION SATELLITE OBSERVÉE',font=font(49),fill='#42d9ee')
+    d.text((60,73),satellite_time_label(stamp)+f'  •  Image {number}/{total}',font=font(36),fill='white')
+    if bounds:
+        lo,hi,s,n=bounds
+        def xy(lat,lon):return (x0+(lon-lo)/(hi-lo)*(pic.width-1),y0+(n-lat)/(n-s)*(pic.height-1))
+        def label(x,y,text,color='white',size=35):
+            d.text((x,y),text,font=font(size),fill=color,stroke_width=4,stroke_fill='#081525')
+        for lon in range(math.ceil(lo/5)*5,math.floor(hi/5)*5+1,5):
+            x,_=xy(n,lon);d.line((x,y0,x,y0+pic.height-1),fill='#7995ad',width=2)
+            label(x+6,y0+6,f'{lon}°E',size=29)
+        for lat in range(math.ceil(s/5)*5,math.floor(n/5)*5+1,5):
+            _,y=xy(lat,lo);d.line((x0,y,x0+pic.width-1,y),fill='#7995ad',width=2)
+            label(x0+8,y+5,f'{abs(lat)}°S' if lat<0 else f'{lat}°N',size=29)
+        for name,lat,lon in [('Madagascar',-19,46.7),('Maurice',-20.2,57.5),('Rodrigues',-19.71,63.42),('Réunion',-21.12,55.53),('Agalega',-10.4,56.6)]:
+            if lo<lon<hi and s<lat<n:
+                x,y=xy(lat,lon)
+                if name!='Madagascar':d.ellipse((x-8,y-8,x+8,y+8),fill='white',outline='#091525',width=3)
+                label(x+12,y+12,name,size=36)
+        if forecast:
+            # Already selected official bulletin; no extrapolation or interpolated positions.
+            points=[forecast['anchor']]+forecast['points']
+            coords=[xy(p['lat'],p['lon']) for p in points]
+            for (x,y),(u,v) in zip(coords,coords[1:]):
+                dist=math.hypot(u-x,v-y)
+                if not dist:continue
+                for k in range(0,math.ceil(dist),28):
+                    q=min(k+14,dist)
+                    seg=(x+(u-x)*k/dist,y+(v-y)*k/dist,x+(u-x)*q/dist,y+(v-y)*q/dist)
+                    d.line(seg,fill='#091525',width=13);d.line(seg,fill='#ffda72',width=7)
+            for i,((x,y),p) in enumerate(zip(coords,points)):
+                d.ellipse((x-12,y-12,x+12,y+12),fill='#ffda72',outline='#091525',width=4)
+                # Alternate labels above/below; close coordinates remain unmodified.
+                label(x+18,y+(18 if i%2 else -46),'+'+str(p['hours'])+'h' if i else 'Analyse', '#ffda72',32)
+            label(x0+20,y0+54,'PRÉVISIONS DATÉES · MÉTÉO-FRANCE / WMO', '#ffda72',36)
+            label(x0+20,y0+100,'Bulletin : '+satellite_time_label(forecast['issued_at'])+' · pas une trajectoire observée', '#ffda72',29)
+    if enhanced:
+        x,y,width=60,2030,650
+        for i in range(width):d.line((x+i,y,x+i,y+32),fill=palette_rgb(round(i*255/(width-1))))
+        d.text((x+width+24,y-3),'0–255 · luminosité IR uniquement, pas °C ni intensité cyclonique',font=font(34),fill='#e8f4fa')
+    d.text((60,2082),credit+' | Images datées, sans interpolation. Pas une alerte officielle.',font=font(30),fill='#dce8f0')
     return im
+
+def frame_seconds(count):
+    if not 2<=count<=15:raise ValueError('Invalid observed frame count')
+    return 30/count

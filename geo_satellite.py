@@ -91,9 +91,9 @@ def covers(bounds,extent):
     if not extent:return False
     lo,hi,south,north=bounds;w,e,s,n=extent
     return w<=lo<hi<=e and s<=south<north<=n
-def build(data,forecast,now,fetch=request,coast_fetch=None):
+def build(data,forecast,now,fetch=request,coast_fetch=None,max_frames=4):
     """Return two consistently projected views or an explicitly labelled fallback.
-    Use no more than four real image times and no fabricated intermediate images.
+    Use a bounded number of real image times and no fabricated intermediate images.
     """
     result={'status':'unavailable','reason':'No verified matching forecast','source':BASE,'layer':LAYER,'crs':'EPSG:4326','policy':POLICY,'frames':[]}
     if not forecast:return result,{}
@@ -107,10 +107,10 @@ def build(data,forecast,now,fetch=request,coast_fetch=None):
         times=advertised_times(spec,now)
         if not times:raise ValueError('No exact advertised image timestamps at least one hour old')
         if not covers(wide,extent) or not covers(close,extent):raise ValueError('Forecast area outside advertised satellite coverage')
-        # Limit the sequence to four times over the last six hours where possible.
+        # Sample advertised times across the last six hours.
         recent=[x for x in times if x>=now-dt.timedelta(hours=6)]
         times=recent or times[-1:]
-        n=min(4,len(times));chosen=[times[round(i*(len(times)-1)/(n-1))] for i in range(n)] if n>1 else times[-1:]
+        n=min(max(2,min(15,max_frames)),len(times));chosen=[times[round(i*(len(times)-1)/(n-1))] for i in range(n)] if n>1 else times[-1:]
         coastline={}
         try:
             capabilities(fetch(dict(service='WMS',version='1.3.0',request='GetCapabilities',namespace='overlay'),8_000_000),COAST)

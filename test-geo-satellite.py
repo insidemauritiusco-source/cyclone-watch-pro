@@ -30,6 +30,8 @@ b={'system_number':3,'bulletin_number':1,'issued_at':'2026-11-24T06:00:00Z','anc
 data={'storm':p}
 meta,images=build(data,b,now,fake)
 assert meta['status']=='ok' and len(images)==4 and meta['coastline'] is None
+extended,extended_images=build(data,b,now,fake,max_frames=15)
+assert len(extended_images)==6 and len({f['sha256']['wide'] for f in extended['frames']})==6
 assert all(x['captured_at'] for x in meta['frames'])
 def bad(params,limit):raise ValueError('network unavailable')
 assert build(data,b,now,bad)[0]['status']=='unavailable'

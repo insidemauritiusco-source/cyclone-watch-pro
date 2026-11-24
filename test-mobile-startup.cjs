@@ -57,6 +57,8 @@ for(const desktop of [false,true]){
  assert.match(await p.locator('#premiumDates').textContent(),/UTC.*MUT/);
  assert.equal(await p.locator('#premiumApproved').isDisabled(),true);
  await p.locator('#premiumPlay').click();await p.waitForFunction(()=>!document.getElementById('premiumVideo').paused);
+ await p.locator('#premiumLoop').uncheck();assert.equal(await p.locator('#premiumVideo').evaluate(v=>v.loop),false);
+ await p.locator('#premiumLoop').check();assert.equal(await p.locator('#premiumVideo').evaluate(v=>v.loop),true);
  await p.locator('#premiumReplay').click();
  await p.waitForFunction(()=>!document.getElementById('premiumVideo').paused||document.getElementById('premiumVideo').ended);
  // Check fullscreen invocation without depending on headless OS support.

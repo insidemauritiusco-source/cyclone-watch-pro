@@ -98,7 +98,7 @@ jobs:
           if test -f _video/source.json && test -f _video/weather-fr.mp4 && test -f _video/weather-mfe.mp4; then
             mkdir -p _site/video
             cp _video/source.json _video/weather-fr.mp4 _video/weather-mfe.mp4 _site/video/
-            if test -s _video/satellite-fullscreen-4k.mp4; then cp _video/satellite-fullscreen-4k.mp4 _site/video/; fi
+            for f in satellite-fullscreen-4k.mp4 satellite-fullscreen-forecast-4k.mp4; do if test -s "_video/$f"; then cp "_video/$f" _site/video/; fi; done
             for f in narration-fr.txt narration-mfe.txt weather-fr-male.mp4 weather-mfe-male.mp4 voice-fr.mp3 voice-fr-male.mp3 voice-mfe.mp3 voice-mfe-male.mp3 captions-fr.vtt captions-fr-male.vtt captions-mfe.vtt captions-mfe-male.vtt; do if test -f "_video/$f"; then cp "_video/$f" _site/video/; fi; done
             for f in _video/poster-fr-4k.png _video/poster-mfe-4k.png; do if test -f "$f"; then cp "$f" _site/video/; fi; done
             for f in _video/weather-*-4k.mp4 _video/weather-*-hd.mp4 _video/weather-*-landscape.mp4 _video/weather-*-landscape4k.mp4; do if test -f "$f"; then cp "$f" _site/video/; fi; done
