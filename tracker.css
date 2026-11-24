@@ -57,3 +57,25 @@ footer{grid-template-columns:auto minmax(60px,1fr) auto auto;gap:6px;padding:6px
 @media(prefers-reduced-motion:reduce) {
   .map svg .storm-ring,.map svg .storm-spin {animation:none}
 }
+
+/* V27: optional controls, no modification of satellite colours or projection. */
+.v27Menu .layerOptions {width:165px;max-width:58vw}
+.v27Menu input[type=range],.v27Forecast input[type=range] {width:100%;accent-color:#42d9ee;min-width:0}
+.v27Forecast {display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}
+.v27Forecast button {padding:7px}
+.v27Forecast label,.v27Forecast output,.v27Forecast small {flex-basis:100%;overflow-wrap:anywhere}
+.v27Forecast output {color:#ffda72;font-size:12px}
+#islandDistances div {padding:5px 0;border-bottom:1px solid var(--line)}
+#monitorStatus {flex-basis:100%;overflow-wrap:anywhere}
+body.v27Monitor header {padding:4px 10px}
+body.v27Monitor header img,body.v27Monitor header small,body.v27Monitor header a {display:none}
+body.v27Monitor main {grid-template-columns:minmax(0,1fr)}
+body.v27Monitor aside {position:absolute;right:0;top:0;bottom:0;width:min(92%,350px);z-index:4;box-shadow:-10px 0 30px #0009}
+body.v27Day .map {background:#b9dce7}
+body.v27Day #map>rect {fill:#b9dce7}
+body.v27Day .mapstatus,body.v27Day .mapfoot,body.v27Day .layerMenu,body.v27Day .zoomtools {background:#e6f3fa;color:#102337}
+body.v27Day .layerMenu small {color:#25465a}
+body.v27Day .map svg text {fill:#fff;stroke:#132b40}
+body.v27Day .map svg .forecastLabel {fill:#ffda72}
+@media(min-width:2000px){body.v27Monitor header,body.v27Monitor footer {font-size:clamp(14px,0.75vw,26px)}}
+@media(max-height:480px){.v27Menu[open]{max-height:40dvh}.v27Menu .layerOptions{gap:3px}}

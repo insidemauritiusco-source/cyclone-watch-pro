@@ -12,3 +12,11 @@ const {bearing,extent}=require('./tracker.js');
 assert.equal(bearing('South Southwest'),202.5);assert.equal(bearing('SSW'),202.5);assert.equal(bearing('stationary'),null);assert.equal(bearing('unknown'),null);
 for(const ratio of [.5,1,2,3]){const a=extent(1,ratio,[0,0]);assert.ok(a.box[2]>=1800-1e-6&&a.box[3]>=1140-1e-6);assert.ok(Math.abs(a.box[2]/a.box[3]-ratio)<1e-6);const b=extent(3,ratio,[100,100]);assert.ok(b.box.every(Number.isFinite))}
 console.log('PASS tracker viewport fit and reported direction parsing');
+
+const {distance,smartZoom}=require('./tracker.js');
+assert.equal(distance({lat:-20.2,lon:57.5},{lat:-20.2,lon:57.5}),0);
+assert.equal(distance({lat:-20,lon:57},{lat:-21,lon:57}),111);
+assert.equal(distance({lat:NaN,lon:57},{lat:-21,lon:57}),null);
+assert.equal(smartZoom({lat:-1,lon:57},1),1);
+for(const ratio of [.4,1,2,5])assert.ok(smartZoom({lat:-10,lon:77},ratio)>=2&&smartZoom({lat:-10,lon:77},ratio)<=4);
+console.log('PASS V27 distance and smart zoom guards');
