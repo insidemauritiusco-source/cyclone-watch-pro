@@ -105,9 +105,19 @@ jobs:
           fi
       - name: Bundle consistent dashboard shell
         run: python build_dashboard.py _site
-      - name: Test mobile dashboard startup on repair commits
-        if: github.event_name == 'push'
+      - name: Test mobile and desktop dashboard startup on repair commits
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: |
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo timeout 90s apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 install -y -qq ffmpeg || {
+              sudo timeout 90s apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 update -qq
+              sudo timeout 120s apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 install -y -qq ffmpeg
+            }
+          fi
+          ffmpeg -version
+          if test -f _site/video/satellite-fullscreen-4k.mp4; then
+            ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 _site/video/satellite-fullscreen-4k.mp4 | grep -x '3840,2160'
+          fi
           npm install --no-save --no-package-lock playwright
           node test-mobile-startup.cjs
       - uses: actions/upload-pages-artifact@v3

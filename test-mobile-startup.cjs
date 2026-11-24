@@ -43,7 +43,7 @@ console.log('PASS forecast playback browser fixture: dated points, reported wind
 const os=require('node:os'),cp=require('node:child_process');
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'premium-test-')),clip=path.join(temp,'fixture.mp4');
 try{
-cp.execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','color=c=navy:s=3840x2160:r=2:d=2','-c:v','libx264','-threads','2','-preset','ultrafast','-pix_fmt','yuv420p','-movflags','+faststart',clip]);
+cp.execFileSync('ffmpeg',['-v','error','-f','lavfi','-i','color=c=navy:s=3840x2160:r=5:d=8','-c:v','libx264','-threads','2','-preset','ultrafast','-pix_fmt','yuv420p','-movflags','+faststart',clip]);
 let manifest={preview_only:false,publication_status:'review_required',premium_satellite_publication_status:'review_required',premium_satellite_fullscreen:'satellite-fullscreen-4k.mp4',generated_at:iso(now),observation_key:'TEST',geographic_satellite_overlay:{status:'ok',source:'https://view.eumetsat.int/geoserver/wms',crs:'EPSG:4326',credit:'TEST ONLY',frames:[iso(now-7200000),iso(now-3600000)].map(captured_at=>({captured_at,sha256:{wide:'a'.repeat(64)}}))}};
 for(const desktop of [false,true]){
  const ctx=await browser.newContext({viewport:desktop?{width:1366,height:768}:{width:390,height:844},isMobile:!desktop,hasTouch:!desktop,serviceWorkers:'block',acceptDownloads:true});
