@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),{xy,select,frames}=require('./tracker.js');
+assert.deepEqual(xy({lat:-4,lon:43}),[0,0]);assert.deepEqual(xy({lat:-29,lon:83}),[1800,1140]);
+const n=Date.parse('2026-11-24T12:00:00Z'),t='2026-11-24T12:00:00Z';
+const d={source_status:'ok',checked_at:t,storm:{name:'B03',lat:-10,lon:77}};
+const b={system_number:3,bulletin_number:1,issued_at:t,anchor:{lat:-10,lon:77},points:[{hours:12,valid_at:'2026-11-25T00:00:00Z',lat:-11,lon:76}]};
+const f={schema:1,issuer:'Meteo-France RSMC La Reunion',source:'https://wwmiws.wmo.int/index.php/metareas/bulletinset/8S/html',status:'ok',checked_at:t,bulletins:[b]};
+assert.equal(select(d,f,n),b);assert.equal(select(d,f,n+3600000),null);assert.equal(select({...d,storm:{...d.storm,name:'B04'}},f,n),null);assert.equal(select(d,{...f,source:'https://example.com'},n),null);
+const hash='a'.repeat(64),m={status:'ok',source:'https://view.eumetsat.int/geoserver/wms',crs:'EPSG:4326',bounds:[43,83,-29,-4],frames:[{captured_at:'2026-11-24T10:00:00Z',sha256:hash,raw:'tracker-media/'+hash+'-raw.jpg'}]};
+assert.equal(frames(m,n).length,1);assert.equal(frames({...m,bounds:[0,1,2,3]},n).length,0);assert.equal(frames({...m,frames:[{...m.frames[0],raw:'https://example.com'}]},n).length,0);
+console.log('PASS tracker coordinate projection, matched official forecast, stale source rejection and satellite manifest validation');

@@ -50,6 +50,7 @@ jobs:
           fi
       - name: Validate studio JavaScript
         run: |
+          node --check tracker.js && node test-tracker.cjs
           node --check premium-player.js && node test-premium-player.cjs
           node --check v9.js && node --check video-player.js && node --check v15.js && node --check v6.js
           python -m py_compile media.py
@@ -102,6 +103,16 @@ jobs:
             for f in narration-fr.txt narration-mfe.txt weather-fr-male.mp4 weather-mfe-male.mp4 voice-fr.mp3 voice-fr-male.mp3 voice-mfe.mp3 voice-mfe-male.mp3 captions-fr.vtt captions-fr-male.vtt captions-mfe.vtt captions-mfe-male.vtt; do if test -f "_video/$f"; then cp "_video/$f" _site/video/; fi; done
             for f in _video/poster-fr-4k.png _video/poster-mfe-4k.png; do if test -f "$f"; then cp "$f" _site/video/; fi; done
             for f in _video/weather-*-4k.mp4 _video/weather-*-hd.mp4 _video/weather-*-landscape.mp4 _video/weather-*-landscape4k.mp4; do if test -f "$f"; then cp "$f" _site/video/; fi; done
+          fi
+      - name: Stage independent satellite tracker
+        run: |
+          cp tracker.html tracker.css tracker.js _site/
+          mkdir -p _site/tracker-media
+          if python -m pip install --quiet Pillow; then
+            timeout 150s python tracker_media.py _site/tracker-media || true
+          fi
+          if ! test -s _site/tracker-media/manifest.json; then
+            printf '{"status":"unavailable","frames":[]}' > _site/tracker-media/manifest.json
           fi
       - name: Bundle consistent dashboard shell
         run: python build_dashboard.py _site
