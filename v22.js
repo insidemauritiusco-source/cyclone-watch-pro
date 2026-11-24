@@ -1,0 +1,28 @@
+(function(factory){const a=factory();if(typeof module==='object'&&module.exports)module.exports=a;else a.mount()})(function(){'use strict';
+const links=[['mauritius','MMS · Mauritius','https://metservice.intnet.mu/cyclone-bulletin-english-mauritius.php'],['rodrigues','MMS · Rodrigues','https://metservice.intnet.mu/cyclone-bulletin-english-rodrigues.php'],['reunion','Météo-France · cyclone régional','https://meteofrance.re/fr/cyclone'],['reunion_vigilance','Météo-France · vigilance Réunion','https://vigilance.meteofrance.fr/fr/la-reunion']];
+function age(value,now=Date.now()){const t=Date.parse(value);return Number.isFinite(t)&&t<=now+300000?Math.max(0,Math.floor((now-t)/60000)):null}
+function sourceStatus(row,now=Date.now()){const n=age(row?.checked_at,now);return n===null||n>45?'Check unavailable or old':row.status==='page_reachable'?'Page reachable · '+n+' min ago':'Page not reached · '+n+' min ago'}
+function captures(m,layer,now=Date.now()){
+ const list=layer==='default'?(m?.replay||m?.frames||[]):m?.layers?.[layer]?.frames||[];
+ const frames=new Map();
+ for(const p of list){try{const u=new URL(p.url),ts=Date.parse(p.captured_at);if(u.protocol==='https:'&&u.hostname==='metservice.intnet.mu'&&!u.port&&!u.username&&!u.password&&u.pathname.startsWith('/mmsimages/')&&/\.(jpg|jpeg|png|webp)$/i.test(u.pathname)&&Number.isFinite(ts)&&ts<=now+600000&&ts>=now-86400000)frames.set(ts,{url:u.href,ts})}catch(e){}}
+ const ordered=[...frames.values()].sort((a,b)=>a.ts-b.ts);if(ordered.length<=3)return ordered;return [ordered[0],ordered[Math.floor((ordered.length-1)/2)],ordered.at(-1)]
+}
+function mount(){const $=id=>document.getElementById(id),dialog=$('v20Dialog'),prompt=$('v22Prompter');let sourceReq=0,wallReq=0,promptTimer=null,wallOpen=false;
+async function json(path){const r=await fetch(path+'?t='+Date.now(),{cache:'no-store',...(typeof AbortSignal!=='undefined'&&AbortSignal.timeout?{signal:AbortSignal.timeout(12000)}:{})});if(!r.ok)throw Error(path);return r.json()}
+async function sources(){const id=++sourceReq;let data=null;try{data=await json('regional-sources.json')}catch(e){}if(id!==sourceReq)return;const box=$('v22Sources');box.replaceChildren();for(const [key,label,url] of links){const div=document.createElement('div'),a=document.createElement('a'),p=document.createElement('p');a.href=url;a.target='_blank';a.rel='noopener';a.textContent=label+' ↗';p.textContent=sourceStatus(data?.schema===1?data.sources?.find(x=>x.id===key):null);div.append(a,p);box.append(div)}}
+$('v22RefreshSources').onclick=sources;
+function mobile(on){dialog.classList.toggle('v22mobile',on);$('v22MobileToggle').setAttribute('aria-pressed',String(on));$('v22MobileToggle').textContent=on?'Mode TV':'Mode mobile';window.dispatchEvent(new Event('resize'))}
+$('v22Mobile').onclick=()=>{$('v21Open').click();if(dialog.open)mobile(true)};
+$('v22MobileToggle').onclick=()=>mobile(!dialog.classList.contains('v22mobile'));
+$('v22FocusMap').onclick=()=>{$('v21Geo').click();$('v15Track').scrollIntoView({block:'start'})};
+async function wall(){wallOpen=true;const id=++wallReq,box=$('v22Wall');$('v22WallStatus').textContent='Chargement…';box.replaceChildren();try{const m=await json('media.json');if(id!==wallReq||!dialog.open)return;const ps=captures(m,$('v16Layer').value);$('v22WallStatus').textContent=ps.length?ps.length+' captures sélectionnées · UTC':'Aucune capture datée disponible pour ce canal.';for(const p of ps){const card=document.createElement('figure'),im=document.createElement('img'),caption=document.createElement('figcaption'),a=document.createElement('a');im.alt='Image satellite MMS '+new Date(p.ts).toISOString();im.loading='lazy';im.decoding='async';im.referrerPolicy='no-referrer';caption.textContent=new Date(p.ts).toISOString().replace('T',' ').slice(0,16)+' UTC';a.href=p.url;a.target='_blank';a.rel='noopener';a.textContent='Original ↗';im.onerror=()=>{im.hidden=true;caption.textContent+=' · Image indisponible'};card.append(im,caption,a);box.append(card);im.src=p.url}}catch(e){if(id===wallReq)$('v22WallStatus').textContent='Métadonnées indisponibles.'}}
+$('v22WallLoad').onclick=wall;for(const id of ['v21Layer','v16Layer'])$(id).addEventListener('change',()=>{if(wallOpen&&dialog.open)wall()});dialog.addEventListener('close',()=>{wallOpen=false;++wallReq;$('v22Wall').replaceChildren();$('v22WallStatus').textContent='';mobile(false)});
+function stop(){clearInterval(promptTimer);promptTimer=null;$('v22PromptStart').textContent='Défiler'}
+$('v22Prompt').onclick=()=>{const script=$('v21ScriptCopy').disabled?'':$('v21Script').textContent;if(!script){$('v21ScriptLoad').click();return}$('v22PromptText').textContent=script;prompt.showModal();$('v22PromptText').scrollTop=0};
+$('v22PromptStart').onclick=()=>{if(promptTimer){stop();return}const text=$('v22PromptText');$('v22PromptStart').textContent='Pause';promptTimer=setInterval(()=>{text.scrollTop+=Math.max(1,Math.round(+$('v22PromptRate').value/8));if(text.scrollTop+text.clientHeight>=text.scrollHeight-1)stop()},125)};
+$('v22PromptReset').onclick=()=>{stop();$('v22PromptText').scrollTop=0};$('v22PromptClose').onclick=()=>prompt.close();prompt.addEventListener('close',stop);document.addEventListener('visibilitychange',()=>{if(document.hidden)stop()});
+window.addEventListener('online',sources);setInterval(()=>{if(!document.hidden)sources()},300000);sources();
+}
+return {age,sourceStatus,captures,mount}
+});

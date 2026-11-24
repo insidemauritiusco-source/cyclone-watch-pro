@@ -59,6 +59,11 @@ jobs:
           node --check v19.js && node test-v19.cjs
           node --check v20.js && node test-v20.cjs
           node --check v21.js && node test-v21.cjs
+          node --check v22.js && node test-v22.cjs
+          python -m py_compile regional_sources.py
+      - name: Check regional official bulletin page reachability
+        run: python regional_sources.py
+        continue-on-error: true
       - name: Retrieve latest successful video artifact
         continue-on-error: true
         env:
@@ -75,10 +80,11 @@ jobs:
       - name: Stage public files
         run: |
           mkdir -p _site
-          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js v15.js v15.css v17.js v18.js v19.js v20.js v21.js voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
+          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js v15.js v15.css v17.js v18.js v19.js v20.js v21.js v22.js voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
           if test -f archive.json; then cp archive.json _site/; fi
           if test -f broadcast-archive.json; then cp broadcast-archive.json _site/; fi
           if test -f media.json; then cp media.json _site/; fi
+          if test -f regional-sources.json; then cp regional-sources.json _site/; fi
           for f in satellite-archive.json source-health.json; do if test -f "$f"; then cp "$f" _site/; fi; done
           if test -f _video/source.json && test -f _video/weather-fr.mp4 && test -f _video/weather-mfe.mp4; then
             mkdir -p _site/video

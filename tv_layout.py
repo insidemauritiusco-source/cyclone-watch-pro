@@ -89,6 +89,7 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None, 
         line(54,812,captured,19,'#e0f3f9',True)
         line(54,838,('Dernière image disponible' if language=='fr' else 'Dernie zimaz disponib') if poster else (t['sequence'] if frame_count>1 else t['single']),15,'#aac6d7',maxw=790)
         line(890,838,f'{min(phase+1,frame_count)}/{frame_count}',15,'#42d9ee',True,maxw=115)
+        line(730,330,'MMS / METEOSAT',15,'#42d9ee',True,maxw=280)
         box(54,858,970,3,'#28485c')
         box(54,858,max(1,970*min(phase+1,frame_count)/max(1,frame_count)),3,'#42d9ee')
     else:
@@ -105,7 +106,7 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None, 
         x,y=xy(north,lon);d.line((x,y,x,xy(south,lon)[1]),fill='#294558',width=2)
     for lat in range(-5,-26,-5):
         x,y=xy(lat,lo);d.line((x,y,xy(lat,hi)[0],y),fill='#294558',width=2)
-    for place,lat,lon in [('Madagascar',-19.4,46.7),('Maurice' if language=='fr' else 'Moris',-20.2,57.5),('Rodrigues',-19.71,63.42),('Agalega',-10.4,56.6)]:
+    for place,lat,lon in [('Madagascar',-19.4,46.7),('Maurice' if language=='fr' else 'Moris',-20.2,57.5),('Rodrigues',-19.71,63.42),('Agalega',-10.4,56.6),('Réunion',-21.13,55.53)]:
         x,y=xy(lat,lon);d.ellipse((x-5,y-5,x+5,y+5),fill='#bbd4de')
         d.text((x+8,y+7),place,font=font(13),fill='#bbd4de')
     shown=min(count,1+phase) if count else 0
