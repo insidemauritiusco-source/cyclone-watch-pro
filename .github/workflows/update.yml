@@ -1,6 +1,10 @@
 name: Refresh and deploy Cyclone Watch Pro
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ['Render 4K satellite weather video']
+    types: [completed]
+    branches: [main]
   schedule:
     - cron: '7,22,37,52 * * * *'
   push:
@@ -11,9 +15,11 @@ concurrency:
   cancel-in-progress: false
 jobs:
   refresh:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,13 +45,26 @@ jobs:
         run: python media.py
         continue-on-error: true
       - name: Validate studio JavaScript
-        run: node --check v9.js
+        run: node --check v9.js && node --check video-player.js
+      - name: Retrieve latest successful video artifact
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh run list --workflow video.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if test -n "$run_id"; then
+            gh run download "$run_id" --name Inside-Mauritius-4K-Weather-Video --dir _video
+          fi
       - name: Stage public files
         run: |
           mkdir -p _site
-          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css studio-logo.png manifest.webmanifest icon.svg sw.js _site/
+          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js studio-logo.png manifest.webmanifest icon.svg sw.js _site/
           if test -f archive.json; then cp archive.json _site/; fi
           if test -f media.json; then cp media.json _site/; fi
+          if test -f _video/source.json && test -f _video/weather-fr.mp4 && test -f _video/weather-mfe.mp4; then
+            mkdir -p _site/video
+            cp _video/source.json _video/weather-fr.mp4 _video/weather-mfe.mp4 _site/video/
+          fi
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'video.py'
+      - 'media.py'
       - '.github/workflows/video.yml'
 permissions:
   contents: read
@@ -32,4 +33,4 @@ jobs:
         with:
           name: Inside-Mauritius-4K-Weather-Video
           path: video-output/
-          retention-days: 7
+          retention-days: 30

@@ -49,16 +49,13 @@ try:
     m=json.loads((ROOT/'media.json').read_text())
     url=m['satellite']['url']; p=urllib.parse.urlparse(url)
     if p.scheme!='https' or p.hostname!='metservice.intnet.mu' or not p.path.startswith('/mmsimages/'): raise ValueError('Unapproved image source')
-    filename=urllib.parse.unquote(p.path.split('/')[-1])
-    # MMS filenames include the actual image date and UTC time after Meteosat.
-    match=re.search(r'Meteosat[- ]?\d*\s+(\d{4}-\d{2}-\d{2})\s+(\d{4})',filename,re.I)
-    if not match: raise ValueError('Satellite capture time not recognized')
-    capture=dt.datetime.strptime(match.group(1)+' '+match.group(2),'%Y-%m-%d %H%M').replace(tzinfo=dt.timezone.utc)
+    capture=dt.datetime.fromisoformat(m['satellite']['captured_at'])
+    if capture.tzinfo is None:raise ValueError('Capture time lacks timezone')
     if not -600 <= (now-capture).total_seconds() <= 24*3600: raise ValueError('Image is not recent')
-    req=urllib.request.Request(url,headers={'User-Agent':'InsideMauritiusCycloneWatch/1.0'})
+    req=urllib.request.Request(url,headers={'User-Agent':'InsideMauritiusCycloneWatch/1.0','Referer':'https://metservice.intnet.mu/satellite-imagery.php','Accept':'image/*'})
     with urllib.request.urlopen(req,timeout=25) as response:
         end=urllib.parse.urlparse(response.geturl())
-        if end.hostname!='metservice.intnet.mu':raise ValueError('Unexpected source redirect')
+        if end.scheme!='https' or end.hostname!='metservice.intnet.mu' or not end.path.startswith('/mmsimages/'):raise ValueError('Unexpected source redirect')
         raw=response.read(15_000_001)
     if len(raw)>15_000_000:raise ValueError('Image too large')
     import io
@@ -111,10 +108,24 @@ if fresh:
 else:narration+="Les conditions actuelles ne sont pas vérifiées. "
 narration+=("Image satellite publiée par les services météorologiques. " if sat else "Image satellite indisponible. " )+"Suivez les avertissements officiels de la météo de Maurice."
 (OUT/'narration-fr.txt').write_text(narration)
-audio=OUT/'voice.wav'
-subprocess.run(['espeak-ng','-v','fr','-s','155','-w',str(audio),narration],check=True)
-# A restrained fade and a static factual chart; no fabricated cyclone movement.
-video=OUT/'Inside-Mauritius-Cyclone-4K.mp4'
-subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-loop','1','-framerate','24','-i',str(poster),'-i',str(audio),'-vf','fade=t=in:st=0:d=0.45,format=yuv420p','-c:v','libx264','-preset','ultrafast','-crf','22','-threads','4','-c:a','aac','-b:a','128k','-shortest','-movflags','+faststart',str(video)],check=True)
-(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'video_resolution':'2160x3840','voice':'French synthetic speech, espeak-ng'},indent=2,ensure_ascii=False))
-print('Video rendered. Satellite included:',bool(sat))
+krname=(S.get('name') or 'Sistem pa konfirme').replace('Tropical Disturbance','Pertirbasion tropikal').replace('Tropical Depression','Depresion tropikal').replace('Tropical Cyclone','Siklon tropikal').replace('Moderate Tropical Storm','Tanpet tropikal modere').replace('Severe Tropical Storm','Tanpet tropikal for')
+krdir={'South Southwest':'sid sid wes','South-southwest':'sid sid wes','South':'sid','West':'wes','North':'nor','East':'les'}.get(str(S.get('direction')),str(S.get('direction') or 'pa signale'))
+krwarning='Okenn avertisman signale' if warning=='No warning reported' else warning.replace('Class ','Klas ') if warning.startswith('Class ') else 'Avertisman aktiel pa verifie'
+kreol=f"Inside Mauritius, siveyans siklon. {krname}. Observasion: {obs}. "
+if fresh:
+    if S.get('pressure') is not None:kreol+=f"Presion santral, {S['pressure']} ekto paskal. "
+    if S.get('speed') is not None:kreol+=f"Deplasman, {S['speed']} kilomet par er, direksion {krdir}. "
+    kreol+=f"Pou Moris, {krwarning}. "
+else:kreol+="Kondision aktiel pa verifie. "
+kreol+=("Zimaz satelit pibliye par servis meteo. " if sat else "Zimaz satelit pa disponib. ")+"Swiv avertisman ofisiel servis meteo Moris."
+(OUT/'narration-mfe.txt').write_text(kreol)
+for code,script in [('fr',narration),('mfe',kreol)]:
+    audio=OUT/f'voice-{code}.wav'
+    subprocess.run(['espeak-ng','-v','fr','-s','145' if code=='mfe' else '155','-w',str(audio),script],check=True)
+    video=OUT/f'weather-{code}.mp4'
+    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-loop','1','-framerate','24','-i',str(poster),'-i',str(audio),'-vf','fade=t=in:st=0:d=0.45,format=yuv420p','-c:v','libx264','-preset','ultrafast','-crf','22','-threads','4','-c:a','aac','-b:a','128k','-shortest','-movflags','+faststart',str(video)],check=True)
+    probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-of','json',str(video)]))
+    assert any(x.get('codec_type')=='video' and x.get('width')==2160 and x.get('height')==3840 for x in probe['streams'])
+    assert any(x.get('codec_type')=='audio' for x in probe['streams'])
+(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':{'fr':'French synthetic speech','mfe':'Kreol Morisien text using French speech approximation'},'videos':{'fr':'weather-fr.mp4','mfe':'weather-mfe.mp4'}},indent=2,ensure_ascii=False))
+print('Videos rendered. Satellite included:',bool(sat))
