@@ -1,0 +1,53 @@
+name: Refresh and deploy Cyclone Watch Pro
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  push:
+    branches: [main]
+    paths-ignore: [data.json]
+concurrency:
+  group: cyclone-pages
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python update.py
+      - name: Save observation history
+        run: |
+          git config user.name 'cyclone-feed[bot]'
+          git config user.email 'cyclone-feed@users.noreply.github.com'
+          git add data.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Refresh official cyclone observations'
+            git push origin HEAD:main
+          fi
+      - name: Stage public files
+        run: |
+          mkdir -p _site
+          cp index.html data.json _site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: refresh
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy refreshed dashboard
+        id: deployment
+        uses: actions/deploy-pages@v4
