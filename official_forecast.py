@@ -45,7 +45,14 @@ def parse(text,now):
             except ValueError:continue
             lead=int(m[1]); y,x=-float(m[4]),float(m[5])
             if not 0<lead<=120 or valid!=stamp+dt.timedelta(hours=lead) or not -45<=y<0 or not 30<=x<=90:continue
-            pts.append(dict(hours=lead,valid_at=iso(valid),lat=y,lon=x))
+            # Read intensity only immediately after this point's published coordinates.
+            # The WMO bulletin defines wind as a ten-minute average in knots.
+            intensity=re.match(r'\s*,\s*MAX\s+WIND\s*=\s*(\d{1,3})\s*KT\b(?:\s*,\s*(VERY INTENSE TROPICAL CYCLONE|INTENSE TROPICAL CYCLONE|TROPICAL CYCLONE|SEVERE TROPICAL STORM|MODERATE TROPICAL STORM|TROPICAL DEPRESSION|TROPICAL DISTURBANCE|POST-TROPICAL DEPRESSION|REMNANT LOW|EXTRATROPICAL DEPRESSION)\b)?',block[m.end():])
+            point=dict(hours=lead,valid_at=iso(valid),lat=y,lon=x)
+            if intensity and 0<=int(intensity[1])<=200:
+                point['max_wind_kt']=int(intensity[1])
+                if intensity[2]:point['classification']=intensity[2]
+            pts.append(point)
         if not pts or len({p['hours'] for p in pts})!=len(pts):continue
         pts.sort(key=lambda p:p['hours'])
         if not any(dt.datetime.fromisoformat(p['valid_at'])>now for p in pts):continue

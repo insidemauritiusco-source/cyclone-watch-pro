@@ -15,4 +15,28 @@ await page.waitForFunction(()=>document.getElementById('v15MediaBadge').textCont
 await page.waitForFunction(()=>document.getElementById('islandGrid').children.length>=3);
 await page.waitForFunction(()=>document.getElementById('pressureChart').children.length>0);
 console.log('PASS V24.1 mobile browser startup, satellite status, island grid and chart rendering (external sources blocked in test)');
+// Use explicitly synthetic test-only responses to test playback independently of the external feed.
+const now=Date.now(),iso=t=>new Date(t).toISOString(),issued=now-3600000;
+const obs={name:'Tropical Depression (B03)',observed:iso(now-1800000),lat:-9.7,lon:76.8,pressure:1003,speed:12,direction:'South Southwest',wind:null};
+const testData={source_status:'ok',checked_at:iso(now),warning:'No warning reported',storm:obs,history:[obs]};
+const testBulletin={system_number:3,bulletin_number:1,issued_at:iso(issued),anchor:{lat:-9.5,lon:77.1},points:[{hours:12,valid_at:iso(issued+12*3600000),lat:-10.5,lon:76.4,max_wind_kt:30,classification:'TROPICAL DEPRESSION'},{hours:24,valid_at:iso(issued+24*3600000),lat:-11.4,lon:75.8}]};
+const testFeed={schema:1,issuer:'Meteo-France RSMC La Reunion',source:'https://wwmiws.wmo.int/index.php/metareas/bulletinset/8S/html',checked_at:iso(now),status:'ok',bulletins:[testBulletin]};
+await page.route('**/data.json?*',r=>r.fulfill({json:testData}));
+await page.route('**/official-forecast.json?*',r=>r.fulfill({json:testFeed}));
+await page.reload({waitUntil:'domcontentloaded'});
+await page.waitForFunction(()=>!document.getElementById('forecastPlay').disabled&&!!document.getElementById('forecastSelectedPoint'));
+const arrow=await page.locator('#mmsMovementArrow').getAttribute('transform');assert.ok(arrow.includes('rotate(202.5)'));
+assert.match(await page.locator('#forecastDetail').textContent(),/30 kt/);
+await page.locator('#forecastRate').selectOption('600');
+await page.locator('#forecastPlay').click();
+await page.waitForFunction(()=>document.getElementById('forecastStep').textContent.includes('+24h'));
+assert.match(await page.locator('#forecastDetail').textContent(),/Not reported/);
+assert.equal(await page.locator('#mmsMovementArrow').getAttribute('transform'),arrow);
+assert.equal(await page.locator('#officialForecastTrack line').count(),2);
+await page.locator('#forecastReplay').click();
+await page.waitForFunction(()=>document.getElementById('forecastStep').textContent.includes('+12h'));
+await page.locator('#officialForecastToggle').uncheck();
+assert.equal(await page.locator('#officialForecastTrack line').count(),0);
+assert.equal(await page.locator('#forecastPlay').isDisabled(),true);
+console.log('PASS forecast playback browser fixture: dated points, reported wind, replay, toggle, unchanged movement arrow');
 }finally{if(browser)await browser.close();server.close()}})().catch(e=>{console.error(e);process.exitCode=1});
