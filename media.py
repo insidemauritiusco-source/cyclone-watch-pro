@@ -54,6 +54,24 @@ if eligible:
     matching={time:url for url,time in eligible if product(url)==product(u)}
     result['frames']=[{'url':url,'captured_at':time.isoformat()} for time,url in sorted(matching.items())[-24:]]
 else:result['error']='No recent timestamped official satellite image found'
+# Optional layer groups. Never mix different satellite products in one animation.
+def channel(u):
+    p=product(u)
+    if re.search(r'\b(?:wv|water[ -]?vapou?r)\b',p,re.I):return 'wv'
+    if re.search(r'\b(?:vis|visible|hrv)\b',p,re.I):return 'vis'
+    if re.search(r'\b(?:ir|infrared)\b',p,re.I):return 'ir'
+    return None
+layers={}
+for kind in ('ir','vis','wv'):
+    group=[(u,t) for u,t in eligible if channel(u)==kind]
+    if not group:continue
+    newest,when=max(group,key=lambda x:x[1])
+    # Only the latest exact product in each channel; no cross-channel frame interpolation.
+    matching={t:u for u,t in group if product(u)==product(newest)}
+    layers[kind]={'product':product(newest),'frames':[{'url':u,'captured_at':t.isoformat()} for t,u in sorted(matching.items())[-96:]]}
+result['layers']=layers
+if eligible:
+    result['replay']=[{'url':url,'captured_at':time.isoformat()} for time,url in sorted({t:u for u,t in eligible if product(u)==product(result['satellite']['url'])}.items())[-96:]]
 if errors:result['discovery_errors']=errors
 pathlib.Path('media.json').write_text(json.dumps(result,indent=2))
 print('Satellite metadata:',json.dumps(result))

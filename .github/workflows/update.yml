@@ -45,7 +45,10 @@ jobs:
         run: python media.py
         continue-on-error: true
       - name: Validate studio JavaScript
-        run: node --check v9.js && node --check video-player.js && node --check v15.js
+        run: |
+          node --check v9.js && node --check video-player.js && node --check v15.js && node --check v6.js
+          python -m py_compile media.py
+          node test-v16-playback.cjs
       - name: Retrieve latest successful video artifact
         continue-on-error: true
         env:
