@@ -2,6 +2,11 @@ name: Render 4K satellite weather video
 on:
   workflow_dispatch:
     inputs:
+      french_length:
+        description: French bulletin length
+        type: choice
+        options: ['long', 'short']
+        default: 'long'
       speed:
         description: Narration speed
         type: choice
@@ -90,6 +95,7 @@ jobs:
       - name: Render 4K MP4 and synthetic voice
         if: steps.gate.outputs.render == 'true'
         env:
+          FRENCH_LENGTH: ${{ inputs.french_length || 'long' }}
           VOICE_SPEED: ${{ inputs.speed || '1.0' }}
           VOICE_VOLUME: ${{ inputs.volume || '1.0' }}
           GRAPHIC_LANGUAGE: ${{ inputs.graphic_language || 'auto' }}
