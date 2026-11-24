@@ -25,7 +25,7 @@ function line(str,x,y,size=30,color=p.ink,weight=600){font(size,weight);g.fillSt
 function fit(str,x,y,width,size,color=p.ink,weight=700){font(size,weight);while(size>16&&g.measureText(String(str)).width>width){size--;font(size,weight)}line(str,x,y,size,color,weight)}
 function wrap(str,x,y,width,size,lh,color=p.ink,weight=600,maxLines=3){font(size,weight);const rows=[];let row='';for(const word of String(str).split(/\s+/)){const next=row?row+' '+word:word;if(row&&g.measureText(next).width>width){rows.push(row);row=word}else row=next}if(row)rows.push(row);for(let i=0;i<Math.min(rows.length,maxLines);i++){let value=rows[i];if(i===maxLines-1&&rows.length>maxLines)value+='…';fit(value,x,y+i*lh,width,size,color,weight)}}
 const bg=g.createLinearGradient(0,0,1080,1920);bg.addColorStop(0,p.top);bg.addColorStop(1,p.bottom);rect(0,0,1080,1920,bg);rect(0,0,1080,12,p.accent);
-if(logo){const scale=Math.min(160/logo.naturalWidth,92/logo.naturalHeight);const ww=logo.naturalWidth*scale,hh=logo.naturalHeight*scale;rect(54,38,184,112,'#ffffff',12);g.drawImage(logo,146-ww/2,94-hh/2,ww,hh)}
+if(logo){const scale=Math.min(160/logo.naturalWidth,92/logo.naturalHeight);const ww=logo.naturalWidth*scale,hh=logo.naturalHeight*scale;g.drawImage(logo,146-ww/2,94-hh/2,ww,hh)}
 line('INSIDE MAURITIUS',logo?258:54,81,35,p.ink,800);line(w.desk,logo?258:54,123,24,p.muted,650);line('2026–2027',842,80,23,p.muted,650);
 rect(54,169,972,82,p.band,8);fit(w.title,76,229,924,62,'#fff',850);
 rect(54,267,972,53,ok?p.panel:'#6d4219',8);fit(ok?w.source:w.saved,76,303,928,29,ok?p.accent:'#fff3df',800);

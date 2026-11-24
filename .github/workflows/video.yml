@@ -1,0 +1,35 @@
+name: Render 4K satellite weather video
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'video.py'
+      - '.github/workflows/video.yml'
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install rendering tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
+          python -m pip install Pillow
+      - name: Retrieve official observation and imagery
+        run: |
+          python update.py
+          python media.py
+      - name: Render 4K MP4 and synthetic voice
+        run: python video.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Inside-Mauritius-4K-Weather-Video
+          path: video-output/
+          retention-days: 7
