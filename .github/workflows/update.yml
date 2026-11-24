@@ -55,6 +55,7 @@ jobs:
           node test-v16-playback.cjs
           node --check v17.js && node --check v8.js
           python test-v17-archive.py
+          node --check v18.js && node test-v18-map.cjs
       - name: Retrieve latest successful video artifact
         continue-on-error: true
         env:
@@ -71,7 +72,7 @@ jobs:
       - name: Stage public files
         run: |
           mkdir -p _site
-          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js v15.js v15.css v17.js voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
+          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js v15.js v15.css v17.js v18.js voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
           if test -f archive.json; then cp archive.json _site/; fi
           if test -f broadcast-archive.json; then cp broadcast-archive.json _site/; fi
           if test -f media.json; then cp media.json _site/; fi

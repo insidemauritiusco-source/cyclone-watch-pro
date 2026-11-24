@@ -2,7 +2,7 @@
 const $=id=>document.getElementById(id), islands=[
 {name:'Mauritius',lat:-20.2,lon:57.5,url:'https://metservice.intnet.mu/tropical-cyclone/current-cyclone.php'},
 {name:'Rodrigues',lat:-19.71,lon:63.42,url:'https://metservice.intnet.mu/cyclone-bulletin-english-rodrigues.php'},
-{name:'Agalega',lat:-10.4,lon:56.6,url:'https://metservice.intnet.mu/forecast-bulletin-french-agalega.php'}];
+{name:'Agalega',lat:-10.4,lon:56.6,url:'https://metservice.intnet.mu/forecast-bulletin-french-agalega.php'},{name:'Réunion',lat:-21.13,lon:55.53,url:'https://meteofrance.re/fr/cyclone'}];
 let view=null, replayTimer=null, replayPoints=[], replayIndex=0, currentLayer=null, media=null, mediaChecked=0;
 const valid=s=>s&&Number.isFinite(s.lat)&&Number.isFinite(s.lon);
 const fresh=v=>v&&v.mode==='official'&&v.connected&&!v.stale&&v.data.source_status==='ok';
