@@ -50,7 +50,7 @@ def observed_track(data):
         except (KeyError,ValueError,TypeError):continue
     return [points[x] for x in sorted(points)]
 
-def render_card(language, data, frame, captured, frame_count, phase, logo=None):
+def render_card(language, data, frame, captured, frame_count, phase, logo=None, poster=False):
     t=TEXT[language]; im=Image.new('RGB',(W,H),'#091525');d=ImageDraw.Draw(im)
     def box(x,y,w,h,color,r=0):
         b=(x*2,y*2,(x+w)*2,(y+h)*2)
@@ -87,7 +87,7 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None):
         pic=ImageOps.contain(frame,(1984,890),Image.Resampling.LANCZOS)
         im.paste(pic,((W-pic.width)//2,720+(890-pic.height)//2))
         line(54,812,captured,19,'#e0f3f9',True)
-        line(54,838,t['sequence'] if frame_count>1 else t['single'],15,'#aac6d7',maxw=790)
+        line(54,838,('Dernière image disponible' if language=='fr' else 'Dernie zimaz disponib') if poster else (t['sequence'] if frame_count>1 else t['single']),15,'#aac6d7',maxw=790)
         line(890,838,f'{min(phase+1,frame_count)}/{frame_count}',15,'#42d9ee',True,maxw=115)
         box(54,858,970,3,'#28485c')
         box(54,858,max(1,970*min(phase+1,frame_count)/max(1,frame_count)),3,'#42d9ee')
@@ -144,7 +144,11 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None):
     line(52,1394,data['warning'],28,'#ffc36b',True)
     # Real subtitles are overlaid into this dedicated area at render time.
     box(36,1450,908,166,'#0d2032',9)
-    line(54,1459,t['subtitle'],15,'#7796aa',True)
+    if poster:
+        line(54,1465,'BULLETIN DATÉ' if language=='fr' else 'BILTEN DATE',21,'#42d9ee',True)
+        line(54,1507,t['ticker1'],22,'#eaf5fa',True,maxw=870)
+        line(54,1551,t['ticker3'],19,'#b9d6e0',maxw=870)
+    else:line(54,1459,t['subtitle'],15,'#7796aa',True)
     line(44,1632,t['checked']+' : '+data['checked'],22,'#c3d8e6',True)
     line(44,1664,t['credit'],19,'#aac6d7')
     box(36,1702,1008,70,'#16445b',7)

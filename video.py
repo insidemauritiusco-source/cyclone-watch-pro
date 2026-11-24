@@ -132,7 +132,7 @@ rect((0,1857,1080,1920),'#d6393c');line(54,1871,'mr.insidemauritius.com/cyclone/
 poster=OUT/'weather-4k.png';im.save(poster)
 import tempfile
 TMP=pathlib.Path(tempfile.mkdtemp(prefix='weather-frames-'))
-motions={}
+motions={}; posters={}
 def motion_for(language,audio_duration):
     visual_language=GRAPHIC if GRAPHIC!='auto' else language
     long_report=language=='fr' and FRENCH_LENGTH=='long'
@@ -153,6 +153,12 @@ def motion_for(language,audio_duration):
         card=render_card(visual_language,values,frame,captured_text,len(frame_images),i,logo)
         file=TMP/f'tv-{tag}-{i:02d}.png';card.save(file);files.append(file)
         if i==count-1 and visual_language=='fr':card.save(OUT/'weather-4k.png')
+    if visual_language not in posters:
+        poster=OUT/f'poster-{visual_language}-4k.png'
+        capture,frame,_=frame_images[-1] if frame_images else (None,None,None)
+        card=render_card(visual_language,values,frame,capture.strftime('%d %b %Y %H:%M UTC') if capture else '',len(frame_images),count-1,logo,poster=True)
+        assert card.size==(2160,3840)
+        card.save(poster);posters[visual_language]=poster.name
     concat=TMP/f'tv-{tag}.txt'
     hold=(math.ceil(audio_duration*25)+count*2)/(25*count)
     concat.write_text(''.join("file '"+str(p)+f"'\nduration {hold:.6f}\n" for p in files)+"file '"+str(files[-1])+"'\n")
@@ -311,5 +317,5 @@ for code,script,gender,language in [('fr',narration,'female','fr'),('fr-male',na
         quality_checks[code][variant]={'width':vv['width'],'height':vv['height'],'audio':True,'caption_check':portrait_ass.is_file() and landscape_ass.is_file(),'caption_mode':'ASS render completed; visual placement requires review','av_delta':abs(float(vv['duration'])-float(av['duration']))}
         print(f'{code}: {variant} embedded captions, {width}x{height}, verified')
     print(f'{code}: 4K/audio/subtitles verified ({audio_duration:.2f}s); {voices[code]}')
-(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'publication_status':'review_required','french_length':FRENCH_LENGTH,'report_durations':report_durations,'duration_adjustments':duration_adjustments,'studio_version':20,'quality_checks':quality_checks,'sequence_note':'Chronological sequence fitted to measured narration; no simulated cloud motion','track_points':observed_track(D),'track_note':'Recorded bulletin positions only; satellite times are independent','graphic_language':GRAPHIC,'logo_included':LOGO,'subtitle_layout':'V14 fixed safe area, sentence timed'},indent=2,ensure_ascii=False))
+(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'publication_status':'review_required','french_length':FRENCH_LENGTH,'report_durations':report_durations,'duration_adjustments':duration_adjustments,'studio_version':21,'posters':posters,'poster_resolution':'2160x3840','poster_publication_status':'review_required','quality_checks':quality_checks,'sequence_note':'Chronological sequence fitted to measured narration; no simulated cloud motion','track_points':observed_track(D),'track_note':'Recorded bulletin positions only; satellite times are independent','graphic_language':GRAPHIC,'logo_included':LOGO,'subtitle_layout':'V14 fixed safe area, sentence timed'},indent=2,ensure_ascii=False))
 print('Videos rendered. Satellite included:',bool(sat))

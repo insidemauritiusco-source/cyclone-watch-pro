@@ -58,6 +58,7 @@ jobs:
           node --check v18.js && node test-v18-map.cjs
           node --check v19.js && node test-v19.cjs
           node --check v20.js && node test-v20.cjs
+          node --check v21.js && node test-v21.cjs
       - name: Retrieve latest successful video artifact
         continue-on-error: true
         env:
@@ -74,7 +75,7 @@ jobs:
       - name: Stage public files
         run: |
           mkdir -p _site
-          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js v15.js v15.css v17.js v18.js v19.js v20.js voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
+          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js v15.js v15.css v17.js v18.js v19.js v20.js v21.js voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
           if test -f archive.json; then cp archive.json _site/; fi
           if test -f broadcast-archive.json; then cp broadcast-archive.json _site/; fi
           if test -f media.json; then cp media.json _site/; fi
@@ -83,6 +84,7 @@ jobs:
             mkdir -p _site/video
             cp _video/source.json _video/weather-fr.mp4 _video/weather-mfe.mp4 _site/video/
             for f in narration-fr.txt narration-mfe.txt weather-fr-male.mp4 weather-mfe-male.mp4 voice-fr.mp3 voice-fr-male.mp3 voice-mfe.mp3 voice-mfe-male.mp3 captions-fr.vtt captions-fr-male.vtt captions-mfe.vtt captions-mfe-male.vtt; do if test -f "_video/$f"; then cp "_video/$f" _site/video/; fi; done
+            for f in _video/poster-fr-4k.png _video/poster-mfe-4k.png; do if test -f "$f"; then cp "$f" _site/video/; fi; done
             for f in _video/weather-*-4k.mp4 _video/weather-*-hd.mp4 _video/weather-*-landscape.mp4; do if test -f "$f"; then cp "$f" _site/video/; fi; done
           fi
       - uses: actions/upload-pages-artifact@v3
