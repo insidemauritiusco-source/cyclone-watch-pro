@@ -7,6 +7,16 @@ on:
         type: choice
         options: ['0.9', '1.0', '1.1']
         default: '1.0'
+      graphic_language:
+        description: Graphic language (auto matches the selected narration)
+        type: choice
+        options: ['auto', 'fr', 'mfe']
+        default: 'auto'
+      logo:
+        description: Include transparent Inside Mauritius logo
+        type: choice
+        options: ['off', 'on']
+        default: 'off'
       volume:
         description: Narration gain
         type: choice
@@ -18,6 +28,7 @@ on:
     branches: [main]
     paths:
       - 'video.py'
+      - 'tv_layout.py'
       - 'media.py'
       - 'broadcast_gate.py'
       - '.github/workflows/video.yml'
@@ -81,7 +92,11 @@ jobs:
         env:
           VOICE_SPEED: ${{ inputs.speed || '1.0' }}
           VOICE_VOLUME: ${{ inputs.volume || '1.0' }}
-        run: python video.py
+          GRAPHIC_LANGUAGE: ${{ inputs.graphic_language || 'auto' }}
+          BROADCAST_LOGO: ${{ inputs.logo || 'off' }}
+        run: |
+          python -m py_compile video.py tv_layout.py
+          python video.py
       - uses: actions/upload-artifact@v4
         if: steps.gate.outputs.render == 'true'
         with:
