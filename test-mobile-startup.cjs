@@ -7,6 +7,7 @@ await page.goto('http://127.0.0.1:'+server.address().port+'/',{waitUntil:'domcon
 await page.waitForFunction(()=>window.cycloneStartup?.loaded?.length+window.cycloneStartup?.errors?.length===14);
 const result=await page.evaluate(()=>({startup:window.cycloneStartup,hero:getComputedStyle(document.getElementById('v15Stage')).display,clock:document.getElementById('clock').textContent,controls:!!document.getElementById('v24Live').onclick}));
 assert.deepEqual(result.startup.errors,[]);assert.equal(result.startup.loaded.length,14);assert.equal(result.hero,'grid');assert.ok(result.controls);
+const ui=await page.evaluate(()=>({nav:document.querySelectorAll('.deskquick a').length,targets:[...document.querySelectorAll('.deskquick a')].every(a=>!!document.querySelector(a.hash)),metrics:getComputedStyle(document.querySelector('.v151metrics')).gridTemplateColumns.split(' ').length,icon:getComputedStyle(document.querySelector('.v151dock svg')).width}));assert.equal(ui.nav,4);assert.equal(ui.targets,true);assert.equal(ui.metrics,2);assert.equal(ui.icon,'22px');
 await page.waitForFunction(()=>document.getElementById('clock').textContent.length>0);
 await page.waitForFunction(()=>document.getElementById('v15MediaBadge').textContent!=='Checking source...');
 await page.waitForFunction(()=>document.getElementById('islandGrid').children.length>=3);

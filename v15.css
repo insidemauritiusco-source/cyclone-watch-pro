@@ -47,3 +47,58 @@ main{padding:12px 16px}.banner{font-size:12px;margin:0 0 10px;padding:8px 12px;l
 .v23nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0}.v23nav button{min-height:44px;font-size:12px;padding:8px}.v22wall:fullscreen{background:#071727;color:#eaf6ff;overflow:auto;padding:18px;border:0;margin:0;border-radius:0}.v22wall:fullscreen #v22Wall{grid-template-columns:repeat(3,minmax(0,1fr))}.v22wall:fullscreen #v22Wall img{max-height:72vh;object-fit:contain}.v23health,.v23review{border:1px solid #315d75;border-radius:9px;padding:10px;margin:10px 0;background:#0c2132;min-width:0}.v23health h4{margin:0 0 6px}.v23health p{font-size:12px;margin:5px 0;color:#b9d6e0}.v23health p[data-ok=false]{color:#ffc36b}.v23review label{display:flex;align-items:flex-start;gap:8px;margin:7px 0;font-size:13px}.v23review input{flex:none}.v23review legend{font-weight:700;color:#b9e6f3}.v23review p{font-size:11px}.v23nav button:focus-visible{outline:2px solid #42d9ee}@media(max-width:600px){.v23nav{grid-template-columns:repeat(2,minmax(0,1fr))}.v22wall:fullscreen #v22Wall{grid-template-columns:1fr}.v23review{padding:8px}}
 /* Consolidated V24 launch panel, without replacing the approved dashboard. */
 .v24desk{border:1px solid #377d99;border-radius:12px;background:linear-gradient(145deg,#112d41,#071c2c);padding:12px;margin:12px 0}.v24launch{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.v24launch button{min-height:46px;font-size:13px;padding:8px;white-space:normal}.v24desk #v24Status{font-size:12px;color:#b9e6f3;overflow-wrap:anywhere}.v24desk .muted{font-size:12px}@media(max-width:650px){.v24launch{grid-template-columns:repeat(2,minmax(0,1fr))}.v24desk{padding:9px}}
+
+/* V24.2 editorial weather desk — purely visual; existing data and controls retained. */
+:root{--bg:#081320;--panel:#102334;--line:#304b5c;--ink:#f2f7fa;--muted:#a9c0cf;--cyan:#55deeb}
+body{background:#081320;color:var(--ink);font-size:15px;line-height:1.5}
+header{background:linear-gradient(110deg,#102b40,#091827);border-bottom:1px solid #34677d;padding:19px 24px;gap:16px}
+header h1{font-style:normal;letter-spacing:-.045em;font-weight:850;font-size:clamp(24px,3.6vw,43px)}
+header h1 em{font-style:normal;color:#55deeb}
+header>.logo{border-right:1px solid #376477;padding-right:12px}
+header .version{display:inline-block;vertical-align:middle;border:1px solid #416378;background:#16354a;border-radius:5px;padding:2px 6px;font-size:10px;letter-spacing:0;color:#bbecf2}
+header .v151subtitle{font-size:10px;letter-spacing:.10em}
+header .clock{font-size:12px;line-height:1.5}
+main{padding:16px 24px}
+.banner{border:1px solid #455364;border-left:3px solid #ffc36b;background:#152433;font-size:12px;padding:10px 12px;border-radius:8px}
+.deskquick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0 16px}
+.deskquick a{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#122b3d;border:1px solid #36586b;border-radius:8px;color:#eef8fb;text-decoration:none;font-size:13px;font-weight:650;min-width:0}
+.deskquick a span{font-size:10px;font-variant-numeric:tabular-nums;color:#55deeb}
+.deskquick a:hover,.deskquick a:focus-visible{border-color:#55deeb;background:#183c50}
+.deskquick a:first-child{border-color:#55deeb}
+.v15hero{background:#102536;border:1px solid #37667e;border-radius:12px;box-shadow:none;padding:12px;margin-bottom:12px}
+.v15head{padding:2px 2px 10px}.v15head h2{letter-spacing:.025em;font-size:clamp(16px,2.4vw,23px)}
+.v15head h2:before{color:#55deeb}
+.v15stage{background:#050f19;border-radius:8px;border-color:#355a70;min-height:220px}
+.v15stage img{max-height:72vh}.v15empty{min-height:200px;align-content:center}
+.v15pill{font-size:11px;border-radius:5px}
+.v16layers,.v18tools,.v16mapactions,.maptools{gap:7px}
+button,select,a.button{border-radius:7px;background:#152f42;border-color:#3b586c}
+button:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid #55deeb;outline-offset:2px}
+button:disabled{opacity:.55}
+.v151primary .v15summarycard,.v151metrics .stat,.v16card{background:#112638;box-shadow:none;border-color:#355569;border-radius:10px}
+.v151primary .v151system{border-left:4px solid #55deeb}.v151primary .v151warning{border-left:4px solid #ffc36b}
+.v151metrics .stat small{font-size:11px;min-height:0}.v151metrics .stat b{font-weight:780}
+#v15Track,.layout .panel,.v17intel,.v18broadcast,.v19centre,.v20centre,.v24desk{background:#102334;border:1px solid #355367;box-shadow:none;border-radius:12px}
+#mapHeading{background:#17384c;border-left:3px solid #55deeb;border-radius:5px;letter-spacing:.02em}
+.v151dock button{background:#132b3d;border-radius:9px;box-shadow:none;min-height:64px}
+.v151dock #v151-satellite{box-shadow:none}
+.v151dock svg{width:24px;height:24px}
+.v151safety{background:#122e40;box-shadow:none;border-color:#3b657b}
+#reportText{width:100%;max-width:100%;background:#0b1b29;color:#e6f3f8;border:1px solid #38576a;border-radius:8px;padding:10px;line-height:1.5}
+#v15Satellite,#v15Track,#videoStudio,#archivePanel{scroll-margin-top:12px}
+@media(min-width:1000px){.v15stage{min-height:350px}}
+@media(max-width:600px){
+body{font-size:14px}header{padding:12px 10px;gap:9px}header>.logo{width:62px;height:49px}
+header h1{font-size:clamp(22px,5.7vw,29px)}header .clock{text-align:left;font-size:11px;border-top:1px solid #2d4c60;padding-top:7px}
+main{padding:10px}.deskquick{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:9px 0 12px}
+.deskquick a{font-size:12px;padding:8px 9px;min-height:42px}.v15hero{padding:9px}.v15stage{min-height:190px}.v15stage img{max-height:58vh}
+.v151primary{grid-template-columns:1fr;gap:7px}.v151primary .v15summarycard{min-height:0;padding:10px 12px}
+.v151primary .v151system strong{font-size:20px}.v151primary .v151warning strong{font-size:18px}
+.v151metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.v151metrics .stat{padding:10px 12px}
+.v151metrics .stat small{font-size:10px;min-height:0}.v151metrics .stat b{font-size:21px;margin-top:7px}
+.v151dock{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.v151dock button{font-size:11px;min-height:58px}
+.v151dock svg{width:22px;height:22px}
+.v18tools button,.v16layers button,.v16layers select{min-height:40px;font-size:12px}
+.v151safety p{font-size:12px}
+}
+@media print{.deskquick{display:none}}
