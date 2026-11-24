@@ -58,13 +58,13 @@ jobs:
       - name: Stage public files
         run: |
           mkdir -p _site
-          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js studio-logo.png manifest.webmanifest icon.svg sw.js _site/
+          cp index.html data.json v6.js v6.css v7.js v7.css v8.js v8.css v9.js v9.css video-player.js voice-remux.py studio-logo.png manifest.webmanifest icon.svg sw.js _site/
           if test -f archive.json; then cp archive.json _site/; fi
           if test -f media.json; then cp media.json _site/; fi
           if test -f _video/source.json && test -f _video/weather-fr.mp4 && test -f _video/weather-mfe.mp4; then
             mkdir -p _site/video
             cp _video/source.json _video/weather-fr.mp4 _video/weather-mfe.mp4 _site/video/
-            for f in narration-fr.txt narration-mfe.txt; do if test -f "_video/$f"; then cp "_video/$f" _site/video/; fi; done
+            for f in narration-fr.txt narration-mfe.txt weather-fr-male.mp4 weather-mfe-male.mp4 voice-fr.mp3 voice-fr-male.mp3 voice-mfe.mp3 voice-mfe-male.mp3 captions-fr.vtt captions-fr-male.vtt captions-mfe.vtt captions-mfe-male.vtt; do if test -f "_video/$f"; then cp "_video/$f" _site/video/; fi; done
           fi
       - uses: actions/upload-pages-artifact@v3
         with:

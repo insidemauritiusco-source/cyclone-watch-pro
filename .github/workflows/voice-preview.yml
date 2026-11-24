@@ -1,0 +1,70 @@
+name: Preview weather narration only
+on:
+  workflow_dispatch:
+    inputs:
+      speed:
+        description: Narration speed
+        type: choice
+        options: ['0.9', '1.0', '1.1']
+        default: '1.0'
+      volume:
+        description: Narration gain
+        type: choice
+        options: ['0.75', '1.0', '1.15']
+        default: '1.0'
+concurrency:
+  group: cyclone-voice-preview
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install rendering tools
+        timeout-minutes: 4
+        run: |
+          missing=()
+          command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null || missing+=(ffmpeg)
+          command -v espeak-ng >/dev/null || missing+=(espeak-ng)
+          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf && test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf || missing+=(fonts-dejavu-core)
+          if (( ${#missing[@]} )); then
+            sudo timeout 75s apt-get -o Acquire::Retries=0 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 install -y -qq "${missing[@]}" || {
+              sudo timeout 60s apt-get -o Acquire::Retries=0 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 update -qq
+              sudo timeout 75s apt-get -o Acquire::Retries=0 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 install -y -qq "${missing[@]}"
+            }
+          fi
+          python -c 'import PIL' || python -m pip install --disable-pip-version-check --timeout 15 --retries 1 Pillow
+          ffmpeg -version
+          espeak-ng --version
+      - name: Prepare optional neural speech model
+        timeout-minutes: 4
+        continue-on-error: true
+        run: |
+          python -m pip install --disable-pip-version-check --timeout 20 --retries 1 piper-tts
+          mkdir -p voice-model
+          base=https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium
+          curl -fL --retry 1 --max-time 60 "$base/fr_FR-siwis-medium.onnx" -o voice-model/fr_FR-siwis-medium.onnx
+          curl -fL --retry 1 --max-time 30 "$base/fr_FR-siwis-medium.onnx.json" -o voice-model/fr_FR-siwis-medium.onnx.json
+          base=https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/tom/medium
+          curl -fL --retry 1 --max-time 60 "$base/fr_FR-tom-medium.onnx" -o voice-model/fr_FR-tom-medium.onnx
+          curl -fL --retry 1 --max-time 30 "$base/fr_FR-tom-medium.onnx.json" -o voice-model/fr_FR-tom-medium.onnx.json
+      - name: Retrieve official observation and imagery
+        run: |
+          python update.py
+          python media.py
+      - name: Generate audio-only voice previews
+        env:
+          VOICE_SPEED: ${{ inputs.speed || '1.0' }}
+          VOICE_VOLUME: ${{ inputs.volume || '1.0' }}
+        run: python video.py --preview-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Inside-Mauritius-Voice-Previews
+          path: video-output/
+          retention-days: 30

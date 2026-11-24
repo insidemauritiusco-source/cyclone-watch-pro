@@ -1,10 +1,14 @@
 """Render a dated independent weather video; never synthesize satellite imagery."""
-import json, datetime as dt, pathlib, math, re, subprocess, urllib.request, urllib.parse, textwrap
+import json, datetime as dt, pathlib, math, re, subprocess, urllib.request, urllib.parse, textwrap, os, sys
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 ROOT=pathlib.Path(__file__).resolve().parent
 OUT=ROOT/'video-output'; OUT.mkdir(exist_ok=True)
 D=json.loads((ROOT/'data.json').read_text()); S=D.get('storm') or {}
 W,H=2160,3840
+PREVIEW='--preview-only' in sys.argv
+SPEED=float(os.getenv('VOICE_SPEED','1.0'))
+VOLUME=float(os.getenv('VOICE_VOLUME','1.0'))
+if not 0.85<=SPEED<=1.15 or not 0.5<=VOLUME<=1.25:raise ValueError('Voice settings out of range')
 now=dt.datetime.now(dt.timezone.utc)
 try:
     stamp=dt.datetime.fromisoformat(D['checked_at'])
@@ -133,7 +137,11 @@ if not frames:frames=[poster]
 concat=TMP/'frames.txt'
 concat.write_text(''.join("file '"+str(p)+"'\nduration 1.5\n" for p in frames)+"file '"+str(frames[-1])+"'\n")
 motion=TMP/'motion.mp4'
-subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-f','concat','-safe','0','-i',str(concat),'-vf',"fps=24,drawbox=x=0:y=0:w=iw:h=24:color=0x42d9ee:t=fill,format=yuv420p",'-c:v','libx264','-preset','ultrafast','-crf','23','-threads','4','-movflags','+faststart',str(motion)],check=True)
+if not PREVIEW:
+    # Animate the title only; preserve unmodified chronological weather frames and timestamps.
+    headline="fps=24,drawbox=x=108:y=212:w=1944:h=178:color=0xd6393c:t=fill,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='VEILLE CYCLONIQUE':fontsize=110:fontcolor=white:x=152:y=238:alpha='min(1,t/0.65)',format=yuv420p"
+    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-f','concat','-safe','0','-i',str(concat),'-vf',headline,'-c:v','libx264','-preset','ultrafast','-crf','23','-threads','4','-movflags','+faststart',str(motion)],check=True)
+
 print('Timestamped satellite frames:',len(frame_images))
 narration=f"Inside Mauritius, veille cyclonique. {name}. Observation : {obs}. "
 if fresh:
@@ -164,31 +172,57 @@ def spoken(text,code):
 narration=spoken(narration,'fr');kreol=spoken(kreol,'mfe')
 (OUT/'narration-fr.txt').write_text(narration)
 (OUT/'narration-mfe.txt').write_text(kreol)
-voices={}
-# Prefer a licensed neural French model, with transparent fallback. Kreol remains
-# an approximation until a native-language engine or reviewed recording is supplied.
-def speak(code,script,audio):
-    model=ROOT/'voice-model'/'fr_FR-siwis-medium.onnx'
-    if model.exists():
+voices={}; videos={}; previews={}; captions={}
+def duration(p):
+    return float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','default=noprint_wrappers=1:nokey=1',str(p)],text=True).strip())
+def timecode(s,sep='.'):
+    ms=max(0,round(s*1000));h,ms=divmod(ms,3600000);m,ms=divmod(ms,60000);sec,ms=divmod(ms,1000)
+    return f'{h:02}:{m:02}:{sec:02}{sep}{ms:03}'
+def speak(gender,script,audio,language):
+    choice='tom' if gender=='male' else 'siwis'
+    model=ROOT/'voice-model'/f'fr_FR-{choice}-medium.onnx'
+    if model.exists() and model.with_suffix('.onnx.json').exists():
         try:
-            subprocess.run(['python','-m','piper','--model',str(model),'--output_file',str(audio)],input=script,text=True,check=True,timeout=120)
-            return 'Piper SIWIS neural French (CC BY 4.0)' if code=='fr' else 'Kreol script / Piper French neural approximation; review pronunciation'
+            subprocess.run(['python','-m','piper','--model',str(model),'--output_file',str(audio)],input=script,text=True,check=True,timeout=45)
+            return 'Piper Tom neural French' if gender=='male' else 'Piper SIWIS neural French'
         except Exception as e:print('Neural voice unavailable:',str(e))
-    subprocess.run(['espeak-ng','-v','fr','-s','140' if code=='mfe' else '150','-w',str(audio),script],check=True)
-    return 'French synthetic fallback' if code=='fr' else 'Kreol script / French synthetic fallback; review pronunciation'
-for code,script in [('fr',narration),('mfe',kreol)]:
-    audio=OUT/f'voice-{code}.wav'
-    voices[code]=speak(code,script,audio)
+    variant='fr+m3' if gender=='male' else 'fr+f3'
+    subprocess.run(['espeak-ng','-v',variant,'-s','140' if language=='mfe' else '150','-w',str(audio),script],check=True)
+    return 'eSpeak French fallback ('+gender+')'
+def sentence_audio(code,script,gender,language):
+    # Each sentence has its own measured audio duration, so captions are not guessed.
+    sentences=[x.strip() for x in re.split(r'(?<=[.!?])\s+',script) if x.strip()]
+    parts=[]; labels=[]; engines=[]; pos=0.0
+    for i,sentence in enumerate(sentences):
+        raw=TMP/f'{code}-{i}-raw.wav';part=TMP/f'{code}-{i}.wav'
+        engines.append(speak(gender,sentence,raw,language))
+        subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-i',str(raw),'-af',f'atempo={SPEED},volume={VOLUME},highpass=f=70,alimiter=limit=0.9','-ar','24000','-ac','1','-c:a','pcm_s16le',str(part)],check=True)
+        end=pos+duration(part);labels.append((pos,end,sentence));pos=end;parts.append(part)
+    manifest=TMP/f'{code}-audio.txt';manifest.write_text(''.join("file '"+str(p)+"'\n" for p in parts))
+    audio=TMP/f'{code}.wav'
+    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-f','concat','-safe','0','-i',str(manifest),'-c:a','copy',str(audio)],check=True)
+    vtt=OUT/f'captions-{code}.vtt';srt=TMP/f'captions-{code}.srt'
+    vtt.write_text('WEBVTT\n\n'+''.join(f'{timecode(a)} --> {timecode(b)}\n{s}\n\n' for a,b,s in labels),encoding='utf-8')
+    srt.write_text(''.join(f'{i+1}\n{timecode(a,",")} --> {timecode(b,",")}\n{s}\n\n' for i,(a,b,s) in enumerate(labels)),encoding='utf-8')
+    preview=OUT/f'voice-{code}.mp3'
+    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-i',str(audio),'-c:a','libmp3lame','-b:a','96k',str(preview)],check=True)
+    return audio,srt,preview,vtt,' / '.join(sorted(set(engines)))
+for code,script,gender,language in [('fr',narration,'female','fr'),('fr-male',narration,'male','fr'),('mfe',kreol,'female','mfe'),('mfe-male',kreol,'male','mfe')]:
+    audio,srt,preview,vtt,engine=sentence_audio(code,script,gender,language)
+    voices[code]=engine+(' · Kreol approximation, review pronunciation' if language=='mfe' else '')
+    previews[code]=preview.name;captions[code]=vtt.name
+    if PREVIEW:continue
     video=OUT/f'weather-{code}.mp4'
-    audio_duration=float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','default=noprint_wrappers=1:nokey=1',str(audio)],text=True).strip())
+    audio_duration=duration(audio)
     if not math.isfinite(audio_duration) or audio_duration<=0:raise ValueError('Invalid narration duration')
-    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-stream_loop','-1','-i',str(motion),'-i',str(audio),'-map','0:v:0','-map','1:a:0','-c:v','copy','-af','highpass=f=70,alimiter=limit=0.9','-c:a','aac','-b:a','160k','-t',f'{audio_duration:.6f}','-movflags','+faststart',str(video)],check=True)
+    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-stream_loop','-1','-i',str(motion),'-i',str(audio),'-i',str(srt),'-map','0:v:0','-map','1:a:0','-map','2:s:0','-c:v','copy','-c:a','aac','-b:a','160k','-c:s','mov_text','-metadata:s:s:0','language='+('fra' if language=='fr' else 'mfe'),'-disposition:s:0','0','-t',f'{audio_duration:.6f}','-movflags','+faststart',str(video)],check=True)
     probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-of','json',str(video)]))
-    assert any(x.get('codec_type')=='video' and x.get('width')==2160 and x.get('height')==3840 for x in probe['streams'])
-    assert any(x.get('codec_type')=='audio' for x in probe['streams'])
     video_stream=next(x for x in probe['streams'] if x['codec_type']=='video')
     audio_stream=next(x for x in probe['streams'] if x['codec_type']=='audio')
-    assert abs(float(video_stream['duration'])-float(audio_stream['duration']))<0.15, 'Video and narration duration mismatch'
-    print(f'{code}: verified matching video and audio duration ({audio_duration:.2f}s)')
-(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':{'fr':'weather-fr.mp4','mfe':'weather-mfe.mp4'}},indent=2,ensure_ascii=False))
+    assert video_stream['width']==2160 and video_stream['height']==3840
+    assert any(x.get('codec_type')=='subtitle' for x in probe['streams'])
+    assert abs(float(video_stream['duration'])-float(audio_stream['duration']))<0.15,'Video and narration duration mismatch'
+    videos[code]=video.name
+    print(f'{code}: 4K/audio/subtitles verified ({audio_duration:.2f}s); {voices[code]}')
+(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW},indent=2,ensure_ascii=False))
 print('Videos rendered. Satellite included:',bool(sat))
