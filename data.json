@@ -1,28 +1,10 @@
 {
-  "checked_at": "2026-11-24T03:45:49.642165+00:00",
-  "source_status": "ok",
+  "checked_at": "2026-11-24T03:53:10.320747+00:00",
+  "source_status": "incomplete",
   "warning": "No warning reported",
-  "storm": {
-    "name": "Cyclone Warning Bulletin Mauritius",
-    "observed": "24 November 2026 04 AM",
-    "lat": -9.5,
-    "lon": 77.1,
-    "pressure": 1005,
-    "speed": 15.0,
-    "direction": "South Southwest",
-    "wind": null
-  },
-  "history": [
-    {
-      "name": "Cyclone Warning Bulletin Mauritius",
-      "observed": "24 November 2026 04 AM",
-      "lat": -9.5,
-      "lon": 77.1,
-      "pressure": 1005,
-      "speed": 15.0,
-      "direction": "South Southwest",
-      "wind": null
-    }
-  ],
-  "errors": []
+  "storm": null,
+  "history": [],
+  "errors": [
+    "Storm name not recognized"
+  ]
 }
