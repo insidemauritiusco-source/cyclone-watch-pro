@@ -7,7 +7,7 @@ D=json.loads((ROOT/'data.json').read_text()); S=D.get('storm') or {}
 W,H=2160,3840
 PREVIEW='--preview-only' in sys.argv
 from broadcast_gate import fingerprint
-from tv_layout import render_card, logo_transparent, ass_captions
+from tv_layout import render_card, logo_transparent, ass_captions, observed_track
 GRAPHIC=os.getenv('GRAPHIC_LANGUAGE','auto')
 LOGO=os.getenv('BROADCAST_LOGO','off')=='on'
 if GRAPHIC not in ('auto','fr','mfe'):raise ValueError('Invalid graphic language')
@@ -73,16 +73,20 @@ def fetch_frame(item):
 try:
     m=json.loads((ROOT/'media.json').read_text())
     latest=m.get('satellite')
-    if latest:
-        frame_images.append(fetch_frame(latest))
-        from concurrent.futures import ThreadPoolExecutor
-        def attempt(item):
-            try:return fetch_frame(item)
-            except Exception as e:print('Animation frame unavailable:',str(e));return None
-        with ThreadPoolExecutor(max_workers=3) as pool:
-            extra=list(pool.map(attempt,[x for x in m.get('frames',[]) if x['url']!=latest['url']][-7:]))
-        frame_images.extend(x for x in extra if x)
-        frame_images=sorted({f[0]:f for f in frame_images}.values(),key=lambda f:f[0])
+    items={x['url']:x for x in m.get('frames',[]) if isinstance(x,dict) and x.get('url')}
+    if latest:items[latest['url']]=latest
+    from concurrent.futures import ThreadPoolExecutor
+    def attempt(item):
+        try:return fetch_frame(item)
+        except Exception as e:print('Animation frame unavailable:',str(e));return None
+    # Bound report size while spanning the available period rather than just the latest frames.
+    ordered=sorted(items.values(),key=lambda x:x['captured_at'])
+    if len(ordered)>12:
+        ordered=[ordered[round(i*(len(ordered)-1)/11)] for i in range(12)]
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        frame_images=[x for x in pool.map(attempt,ordered) if x]
+    frame_images=sorted({f[0]:f for f in frame_images}.values(),key=lambda f:f[0])
+    if frame_images:
         capture,sat,image_url=frame_images[-1]
         image_time=capture.strftime('%d %b %Y %H:%M UTC')
 except Exception as e:print('Satellite unavailable:',str(e))
@@ -131,12 +135,12 @@ def motion_for(language):
     if language in motions:return motions[language]
     visual_language=GRAPHIC if GRAPHIC!='auto' else language
     if visual_language in motions:return motions[visual_language]
-    values=dict(name=name if visual_language=='fr' else krname,obs=obs,fresh=fresh,pressure=number('pressure','hPa'),speed=number('speed','km/h'),distance=distance(),direction=direction if visual_language=='fr' else krdir,coord=coord,warning=warn_fr if visual_language=='fr' else krwarning,checked=checked)
+    values=dict(name=name if visual_language=='fr' else krname,obs=obs,fresh=fresh,pressure=number('pressure','hPa'),speed=number('speed','km/h'),distance=distance(),direction=direction if visual_language=='fr' else krdir,coord=coord,warning=warn_fr if visual_language=='fr' else krwarning,checked=checked,track=observed_track(D),bearing=S.get('direction'))
     logo=logo_transparent(ROOT/'studio-logo.png') if LOGO else None
     if LOGO and logo is None:raise ValueError('Requested logo unavailable')
     files=[]
     # A single observation stays a single observation, even if the TV cards rotate.
-    count=max(4,len(frame_images))
+    count=max(4,len(frame_images),len(values['track']))
     for i in range(count):
         captured,frame,url=frame_images[i%len(frame_images)] if frame_images else (None,None,None)
         # Do not repeat earlier timestamps within one sequence when two or three frames exist.
@@ -258,5 +262,5 @@ for code,script,gender,language in [('fr',narration,'female','fr'),('fr-male',na
         formats[code][variant]=dest.name
         print(f'{code}: {variant} embedded captions, {width}x{height}, verified')
     print(f'{code}: 4K/audio/subtitles verified ({audio_duration:.2f}s); {voices[code]}')
-(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'publication_status':'review_required','studio_version':14,'graphic_language':GRAPHIC,'logo_included':LOGO,'subtitle_layout':'V14 fixed safe area, sentence timed'},indent=2,ensure_ascii=False))
+(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'publication_status':'review_required','studio_version':14,'track_points':observed_track(D),'track_note':'Recorded bulletin positions only; satellite times are independent','graphic_language':GRAPHIC,'logo_included':LOGO,'subtitle_layout':'V14 fixed safe area, sentence timed'},indent=2,ensure_ascii=False))
 print('Videos rendered. Satellite included:',bool(sat))
