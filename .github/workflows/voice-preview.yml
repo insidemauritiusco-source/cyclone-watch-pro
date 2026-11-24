@@ -57,6 +57,7 @@ jobs:
       - name: Retrieve official observation and imagery
         run: |
           python update.py
+          python official_forecast.py
           python media.py
       - name: Generate audio-only voice previews
         env:

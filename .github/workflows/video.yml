@@ -34,6 +34,8 @@ on:
     paths:
       - 'video.py'
       - 'tv_layout.py'
+      - 'forecast_video.py'
+      - 'official_forecast.py'
       - 'media.py'
       - 'broadcast_gate.py'
       - '.github/workflows/video.yml'
@@ -58,6 +60,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           python update.py
+          python official_forecast.py
           python broadcast_gate.py
       - name: Install rendering tools
         if: steps.gate.outputs.render == 'true'
@@ -101,8 +104,9 @@ jobs:
           GRAPHIC_LANGUAGE: ${{ inputs.graphic_language || 'auto' }}
           BROADCAST_LOGO: ${{ inputs.logo || 'off' }}
         run: |
-          python -m py_compile video.py tv_layout.py
+          python -m py_compile video.py tv_layout.py forecast_video.py
           python test-v24-layout.py
+          python test-forecast-video.py
           python video.py
       - uses: actions/upload-artifact@v4
         if: steps.gate.outputs.render == 'true'

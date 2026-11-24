@@ -8,7 +8,8 @@ W,H=2160,3840
 PREVIEW='--preview-only' in sys.argv
 FRENCH_LENGTH=os.getenv('FRENCH_LENGTH','long')
 if FRENCH_LENGTH not in ('long','short'):raise ValueError('Invalid report length')
-from broadcast_gate import fingerprint
+from broadcast_gate import fingerprint, report_key
+from forecast_video import load_forecast, forecast_words, scene_holds
 from tv_layout import render_card, logo_transparent, ass_captions, observed_track
 GRAPHIC=os.getenv('GRAPHIC_LANGUAGE','auto')
 LOGO=os.getenv('BROADCAST_LOGO','off')=='on'
@@ -31,6 +32,8 @@ def distance():
         a=math.sin((lat+20.2)*r/2)**2+math.cos(lat*r)*math.cos(20.2*r)*math.sin((lon-57.5)*r/2)**2
         return f'{round(12742*math.asin(math.sqrt(min(1,a)))):,} km'
     except Exception:return '—'
+FORECAST=load_forecast(D,ROOT,now)
+print('Verified video forecast:',len(FORECAST['points']) if FORECAST else 0,'published points')
 warning=D.get('warning','Unknown') if fresh else 'Current warning not verified'
 warn_fr={'No warning reported':'Aucun avertissement signalé'}.get(warning,warning.replace('Class ','Classe ') if warning.startswith('Class ') else 'Avertissement actuel non vérifié')
 name=S.get('name','Système non confirmé').replace('Tropical Disturbance','Perturbation tropicale').replace('Tropical Depression','Dépression tropicale').replace('Tropical Cyclone','Cyclone tropical')
@@ -133,13 +136,13 @@ poster=OUT/'weather-4k.png';im.save(poster)
 import tempfile
 TMP=pathlib.Path(tempfile.mkdtemp(prefix='weather-frames-'))
 motions={}; posters={}
-def motion_for(language,audio_duration):
+def motion_for(language,audio_duration,labels):
     visual_language=GRAPHIC if GRAPHIC!='auto' else language
     long_report=language=='fr' and FRENCH_LENGTH=='long'
-    key=(visual_language,long_report,round(audio_duration,3))
+    key=(visual_language,language,long_report,round(audio_duration,3),tuple((round(a,3),round(b,3)) for a,b,_ in labels))
     if key in motions:return motions[key]
-    tag=visual_language+('-long' if long_report else '-short')+f'-{audio_duration:.3f}'
-    values=dict(name=name if visual_language=='fr' else krname,obs=obs,fresh=fresh,pressure=number('pressure','hPa'),speed=number('speed','km/h'),distance=distance(),direction=direction if visual_language=='fr' else krdir,coord=coord,warning=warn_fr if visual_language=='fr' else krwarning,checked=checked,track=observed_track(D),bearing=S.get('direction'))
+    tag=visual_language+'-'+language+('-long' if long_report else '-short')+f'-{audio_duration:.3f}'
+    values=dict(name=name if visual_language=='fr' else krname,obs=obs,fresh=fresh,pressure=number('pressure','hPa'),speed=number('speed','km/h'),distance=distance(),direction=direction if visual_language=='fr' else krdir,coord=coord,warning=warn_fr if visual_language=='fr' else krwarning,checked=checked,track=observed_track(D),bearing=S.get('direction') if fresh else None,forecast=FORECAST)
     logo=logo_transparent(ROOT/'studio-logo.png') if LOGO else None
     if LOGO and logo is None:raise ValueError('Requested logo unavailable')
     files=[]
@@ -153,6 +156,12 @@ def motion_for(language,audio_duration):
         card=render_card(visual_language,values,frame,captured_text,len(frame_images),i,logo)
         file=TMP/f'tv-{tag}-{i:02d}.png';card.save(file);files.append(file)
         if i==count-1 and visual_language=='fr':card.save(OUT/'weather-4k.png')
+    # Separate expanded forecast scenes, one frame for each published coordinate.
+    # Reuse the latest real satellite frame only as input; forecast scene is a schematic.
+    if FORECAST:
+        for j in range(len(FORECAST['points'])):
+            card=render_card(visual_language,values,None,'',len(frame_images),count+j,logo,forecast_step=j)
+            file=TMP/f'tv-{tag}-forecast-{j:03d}.png';card.save(file);files.append(file)
     if visual_language not in posters:
         poster=OUT/f'poster-{visual_language}-4k.png'
         capture,frame,_=frame_images[-1] if frame_images else (None,None,None)
@@ -160,8 +169,10 @@ def motion_for(language,audio_duration):
         assert card.size==(2160,3840)
         card.save(poster);posters[visual_language]=poster.name
     concat=TMP/f'tv-{tag}.txt'
-    hold=(math.ceil(audio_duration*25)+count*2)/(25*count)
-    concat.write_text(''.join("file '"+str(p)+f"'\nduration {hold:.6f}\n" for p in files)+"file '"+str(files[-1])+"'\n")
+    holds=scene_holds(count,len(FORECAST['points']) if FORECAST else 0,audio_duration,labels)
+    # Extra frames protect the final audio sample from concat rounding.
+    holds[-1]+=0.2
+    concat.write_text(''.join("file '"+str(p)+f"'\nduration {hold:.6f}\n" for p,hold in zip(files,holds))+"file '"+str(files[-1])+"'\n")
     motion=TMP/f'tv-{tag}.mp4'
     # A short header fade, then real chronological frames with a looping TV ticker.
     subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-f','concat','-safe','0','-i',str(concat),'-vf','fps=24,fade=t=in:st=0:d=0.22,format=yuv420p','-c:v','libx264','-preset','ultrafast','-crf','23','-threads','4','-movflags','+faststart',str(motion)],check=True)
@@ -174,7 +185,7 @@ if fresh:
     if S.get('speed') is not None:narration+=f"Déplacement à {S['speed']} kilomètres par heure, direction {direction}. "
     narration+=f"À Maurice : {warn_fr}. "
 else:narration+="Les conditions actuelles ne sont pas vérifiées. "
-narration+=("Image satellite publiée par les services météorologiques. " if sat else "Image satellite indisponible. " )+"Suivez les avertissements officiels de la météo de Maurice."
+narration+=("Image satellite publiée par les services météorologiques. " if sat else "Image satellite indisponible. ")+forecast_words(FORECAST,'fr')+" Suivez les avertissements officiels de la météo de Maurice."
 if FRENCH_LENGTH=='long':
     parts=["Bonjour et bienvenue dans le journal météo d'Inside Mauritius.",
            "Voici le point sur la surveillance cyclonique dans le sud-ouest de l'océan Indien."]
@@ -196,7 +207,7 @@ if FRENCH_LENGTH=='long':
     elif points:parts.append("La carte indique une seule position relevée. Aucune trajectoire observée ne peut encore être tracée.")
     else:parts.append("Aucune position confirmée ne peut être représentée.")
     parts.append(f"Pour Maurice, au moment de la consultation : {warn_fr}." if fresh else "L'avertissement actuel à Maurice n'a pas été vérifié.")
-    parts.append("La distance et la direction ne constituent pas une prévision d'impact.")
+    parts.append(forecast_words(FORECAST,'fr'))
     parts.append("Pour votre sécurité, consultez les bulletins officiels de la météo de Maurice.")
     parts.append("Merci de suivre Inside Mauritius.")
     narration=" ".join(parts)
@@ -210,7 +221,7 @@ if fresh:
     if S.get('speed') is not None:kreol+=f"Deplasman, {S['speed']} kilomet par er, direksion {krdir}. "
     kreol+=f"Pou Moris, {krwarning}. "
 else:kreol+="Kondision aktiel pa verifie. "
-kreol+=("Zimaz satelit pibliye par servis meteo. " if sat else "Zimaz satelit pa disponib. ")+"Swiv avertisman ofisiel servis meteo Moris."
+kreol+=("Zimaz satelit pibliye par servis meteo. " if sat else "Zimaz satelit pa disponib. ")+forecast_words(FORECAST,'mfe')+" Swiv avertisman ofisiel servis meteo Moris."
 # Normalize date/time and numeric speech; keep original display values on the video.
 def spoken(text,code):
     months={'January':'zanvie' if code=='mfe' else 'janvier','February':'fevriye' if code=='mfe' else 'février','March':'mars','April':'avril','May':'me' if code=='mfe' else 'mai','June':'zin' if code=='mfe' else 'juin','July':'zilye' if code=='mfe' else 'juillet','August':'out' if code=='mfe' else 'août','September':'septam' if code=='mfe' else 'septembre','October':'oktob' if code=='mfe' else 'octobre','November':'novam' if code=='mfe' else 'novembre','December':'desam' if code=='mfe' else 'décembre'}
@@ -275,16 +286,16 @@ def sentence_audio(code,script,gender,language):
     subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-i',str(audio),'-c:a','libmp3lame','-b:a','96k',str(preview)],check=True)
     portrait_ass=TMP/f'captions-{code}-portrait.ass';landscape_ass=TMP/f'captions-{code}-landscape.ass'
     ass_captions(labels,portrait_ass);ass_captions(labels,landscape_ass,True)
-    return audio,srt,preview,vtt,' / '.join(sorted(set(engines))),portrait_ass,landscape_ass
+    return audio,srt,preview,vtt,' / '.join(sorted(set(engines))),portrait_ass,landscape_ass,labels
 for code,script,gender,language in [('fr',narration,'female','fr'),('fr-male',narration,'male','fr'),('mfe',kreol,'female','mfe'),('mfe-male',kreol,'male','mfe')]:
-    audio,srt,preview,vtt,engine,portrait_ass,landscape_ass=sentence_audio(code,script,gender,language)
+    audio,srt,preview,vtt,engine,portrait_ass,landscape_ass,labels=sentence_audio(code,script,gender,language)
     voices[code]=engine+(' · Kreol approximation, review pronunciation' if language=='mfe' else '')
     previews[code]=preview.name;captions[code]=vtt.name
     if PREVIEW:continue
     video=OUT/f'weather-{code}.mp4'
     audio_duration=duration(audio)
     if not math.isfinite(audio_duration) or audio_duration<=0:raise ValueError('Invalid narration duration')
-    motion=motion_for(language,audio_duration)
+    motion=motion_for(language,audio_duration,labels)
     subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-i',str(motion),'-i',str(audio),'-i',str(srt),'-map','0:v:0','-map','1:a:0','-map','2:s:0','-c:v','copy','-c:a','aac','-b:a','160k','-c:s','mov_text','-metadata:s:s:0','language='+('fra' if language=='fr' else 'mfe'),'-disposition:s:0','0','-t',f'{audio_duration:.6f}','-movflags','+faststart',str(video)],check=True)
     probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-of','json',str(video)]))
     video_stream=next(x for x in probe['streams'] if x['codec_type']=='video')
@@ -318,5 +329,5 @@ for code,script,gender,language in [('fr',narration,'female','fr'),('fr-male',na
         quality_checks[code][variant]={'width':vv['width'],'height':vv['height'],'audio':True,'caption_check':portrait_ass.is_file() and landscape_ass.is_file(),'caption_mode':'ASS render completed; visual placement requires review','av_delta':abs(float(vv['duration'])-float(av['duration']))}
         print(f'{code}: {variant} embedded captions, {width}x{height}, verified')
     print(f'{code}: 4K/audio/subtitles verified ({audio_duration:.2f}s); {voices[code]}')
-(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'publication_status':'review_required','french_length':FRENCH_LENGTH,'report_durations':report_durations,'duration_adjustments':duration_adjustments,'studio_version':24,'posters':posters,'poster_resolution':'2160x3840','poster_publication_status':'review_required','quality_checks':quality_checks,'sequence_note':'Chronological sequence fitted to measured narration; no simulated cloud motion','track_points':observed_track(D),'track_note':'Recorded bulletin positions only; satellite times are independent','graphic_language':GRAPHIC,'logo_included':LOGO,'subtitle_layout':'V24 larger type, dedicated safe area, sentence timed'},indent=2,ensure_ascii=False))
+(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'report_key':report_key(D,FORECAST),'official_forecast':FORECAST,'forecast_source':'Météo-France RSMC La Réunion via WMO' if FORECAST else None,'forecast_note':'Issued positions only, no interpolated positions or forecast landfall','publication_status':'review_required','french_length':FRENCH_LENGTH,'report_durations':report_durations,'duration_adjustments':duration_adjustments,'studio_version':25,'posters':posters,'poster_resolution':'2160x3840','poster_publication_status':'review_required','quality_checks':quality_checks,'sequence_note':'Chronological sequence fitted to measured narration; no simulated cloud motion','track_points':observed_track(D),'track_note':'Recorded bulletin positions only; satellite times are independent','graphic_language':GRAPHIC,'logo_included':LOGO,'subtitle_layout':'V24 larger type, dedicated safe area, sentence timed'},indent=2,ensure_ascii=False))
 print('Videos rendered. Satellite included:',bool(sat))
