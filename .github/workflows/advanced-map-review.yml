@@ -1,0 +1,32 @@
+name: Advanced map review tests
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tracker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate tracker source
+        run: |
+          node --check tracker.js
+          node test-tracker.cjs
+          node --check official-forecast.js
+          node test-official-forecast.cjs
+          node --check premium-player.js
+          node test-premium-player.cjs
+      - name: Stage tracker locally (no publishing)
+        run: |
+          mkdir -p _site
+          cp tracker.html tracker.css tracker.js studio-logo.png icon.svg _site/
+      - name: Test desktop and mobile in Chrome
+        run: |
+          npm install --no-save --no-package-lock playwright
+          node test-tracker-browser.cjs
