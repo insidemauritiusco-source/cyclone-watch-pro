@@ -4,6 +4,7 @@ from collections import deque
 from pathlib import Path
 import textwrap, re, math
 from forecast_video import local_time, zoom_bounds
+from premium_graphics import scale_bar
 FONT=Path('/usr/share/fonts/truetype/dejavu')
 W,H=2160,3840
 def font(size,bold=False):
@@ -120,7 +121,9 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None, 
     def xy(lat,lon):return ((86+(lon-lo)/(hi-lo)*900)*2,(top+(north-lat)/(north-south)*height)*2)
     if aligned:
         im.paste(satellite_map['image'],(172,790))
-        line(54,382,('IR EUMETSAT · image ' if language=='fr' else 'IR EUMETSAT · zimaz ')+satellite_map['captured']+' · UTC',12,'#e8f4fa',True,maxw=940)
+        box(86,395,900,30,'#091525')
+        line(96,399,('IR EUMETSAT · ')+satellite_map.get('time_label',satellite_map['captured']+' UTC'),17,'#e8f4fa',True,maxw=875)
+        if satellite_map.get('enhanced'):scale_bar(d,(112,1929,280,18),font(12),language)
     grid=1 if zoom and hi-lo<12 else 2 if zoom and hi-lo<25 else 5
     for lon in range(math.ceil(lo/grid)*grid,math.floor(hi/grid)*grid+1,grid):
         x,y=xy(north,lon);d.line((x,y,x,xy(south,lon)[1]),fill='#7896a8' if aligned else '#294558',width=1 if aligned else 2)
@@ -162,15 +165,17 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None, 
     aliases='n nne ne ene e ese se sse s ssw sw wsw w wnw nw nnw'.split()
     bearings={k:i*22.5 for i,k in enumerate(directions)};bearings.update({k:i*22.5 for i,k in enumerate(aliases)})
     if data.get('fresh') and shown==count and coords and direction in bearings:
-        bx,by=coords[-1];ang=math.radians(bearings[direction]);length=(88 if phase%2 else 76) if forecast_mode else (43 if phase%2 else 34)
+        bx,by=coords[-1];ang=math.radians(bearings[direction]);length=(112 if phase%2 else 98) if forecast_mode else (43 if phase%2 else 34)
         if forecast_mode:
-            rr=29 if phase%2 else 25
-            d.ellipse((bx-rr,by-rr,bx+rr,by+rr),outline='#42d9ee',width=4)
+            rr=39 if phase%2 else 34
+            d.ellipse((bx-rr,by-rr,bx+rr,by+rr),outline='#07121e',width=13)
+            d.ellipse((bx-rr,by-rr,bx+rr,by+rr),outline='#42d9ee',width=6)
             d.arc((bx-22,by-22,bx+22,by+22),start=20+phase%2*40,end=155+phase%2*40,fill='#42d9ee',width=5)
             d.arc((bx-22,by-22,bx+22,by+22),start=200+phase%2*40,end=335+phase%2*40,fill='#42d9ee',width=5)
         ux,uy=math.sin(ang),-math.cos(ang);ex,ey=bx+length*ux,by+length*uy
         head,half=(24,13) if forecast_mode else (13,7)
-        gap=30 if forecast_mode else 13
+        gap=40 if forecast_mode else 13
+        if forecast_mode:d.line((bx+gap*ux,by+gap*uy,ex,ey),fill='#07121e',width=15)
         d.line((bx+gap*ux,by+gap*uy,ex,ey),fill='#42d9ee',width=8 if forecast_mode else 5)
         d.polygon([(ex,ey),(ex-head*ux-half*uy,ey-head*uy+half*ux),(ex-head*ux+half*uy,ey-head*uy-half*ux)],fill='#42d9ee')
     if forecast_mode:
@@ -179,8 +184,8 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None, 
             if length==0:return
             for i in range(0,math.ceil(length),27 if zoom else 18):
                 j=min(i+(13 if zoom else 7),length);segment=(x+dx*i/length,y+dy*i/length,x+dx*j/length,y+dy*j/length)
-                if aligned:d.line(segment,fill='#07121e',width=15 if zoom else 12)
-                d.line(segment,fill='#ffda72',width=9 if zoom else 6)
+                if aligned:d.line(segment,fill='#07121e',width=23 if zoom else 17)
+                d.line(segment,fill='#ffda72',width=12 if zoom else 8)
         # Start from the Météo-France bulletin reference position, not a later MMS center.
         fcoords=[xy(p['lat'],p['lon']) for p in [b['anchor']]+future]
         for p,q in zip(fcoords,fcoords[1:]):dotted(p,q)
@@ -205,7 +210,7 @@ def render_card(language, data, frame, captured, frame_count, phase, logo=None, 
         if forecast_step>=0:line(54,1055,('Vent maximal moyen : ' if language=='fr' else 'Van maximal mwayin : ')+((str(p['max_wind_kt'])+' kt (10 min)') if type(p.get('max_wind_kt')) is int and 0<=p['max_wind_kt']<=200 else t['unknown']),21,'#ffda72',maxw=650 if zoom else 940)
         line(54,1090,'CYAN : OBSERVATIONS / MOUVEMENT · JAUNE : PRÉVISIONS' if language=='fr' else 'SIAN : OBSERVASION / DEPLASMAN · ZONN : PREVIZION',16,'#b9d6e0',True,maxw=650 if zoom else 940)
         line(54,1120,('Satellite observé · prévisions distinctes · parallaxe possible' if language=='fr' else 'Satelit observe · previzion diferan · paralaks posib') if aligned else ('Carte schématique · points publiés uniquement · incertitude' if language=='fr' else 'Kart skematik · pwin pibliye selman · insertitid'),18,'#b9d6e0',maxw=650 if zoom else 940)
-        line(54,1149,('Prévisions : Météo-France / WMO · '+satellite_map['credit']) if aligned else 'Source : Météo-France La Réunion / WMO',17,'#ffda72',True,maxw=650 if zoom else 940)
+        line(54,1149,('Météo-France / WMO · '+satellite_map['credit']+(' · '+satellite_map['coast_credit'] if satellite_map.get('coast_credit') else '')) if aligned else 'Source : Météo-France La Réunion / WMO',17,'#ffda72',True,maxw=650 if zoom else 940)
     else:
         if count:
             msg=f'{shown}/{count} · '+points[shown-1]['observed']

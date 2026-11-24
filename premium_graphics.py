@@ -1,0 +1,96 @@
+"""Broadcast graphics only: no forecast computation or calibrated temperature claims."""
+import io,json,math,urllib.request,urllib.parse,datetime as dt
+from PIL import Image,ImageDraw
+NE_BASE='https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/'
+NE_FILES=('ne_10m_coastline.geojson','ne_10m_minor_islands_coastline.geojson')
+NE_CREDIT='Natural Earth 1:10m (v5.1.2; generalized; not for navigation)'
+# Fixed mapping of DISPLAY pixel brightness, not radiometric temperatures.
+PALETTE=((0,(8,20,42)),(64,(26,57,98)),(128,(58,132,163)),(192,(139,211,211)),(224,(250,191,76)),(255,(246,80,73)))
+def palette_rgb(value):
+    value=max(0,min(255,value))
+    for (a,c),(b,d) in zip(PALETTE,PALETTE[1:]):
+        if value<=b:return tuple(round(x+(y-x)*(value-a)/(b-a)) for x,y in zip(c,d))
+    return PALETTE[-1][1]
+def enhance(im):
+    """Only recolour grayscale source pixels; retain alpha and pixel geometry."""
+    rgb=im.convert('RGB')
+    from PIL import ImageChops
+    r,g,b=rgb.split()
+    if max(ImageChops.difference(r,g).getextrema()[1],ImageChops.difference(r,b).getextrema()[1])>2:
+        return im.copy(),False
+    gray=rgb.convert('L')
+    lut=[palette_rgb(i) for i in range(256)]
+    result=Image.merge('RGB',tuple(gray.point([p[c] for p in lut]) for c in range(3))).convert('RGBA')
+    result.putalpha(im.convert('RGBA').getchannel('A'))
+    return result,True
+def fetch_ne(name):
+    if name not in NE_FILES:raise ValueError('Unexpected coastline file')
+    url=NE_BASE+name
+    with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'InsideMauritiusCycloneWatch/1.0'}),timeout=20) as r:
+        if r.geturl()!=url or r.status!=200:raise ValueError('Unexpected coastline response')
+        raw=r.read(16_000_001)
+    if len(raw)>16_000_000:raise ValueError('Coastline exceeds limit')
+    return json.loads(raw)
+def lines_from_geojson(data):
+    if data.get('type')!='FeatureCollection':raise ValueError('Invalid coastline GeoJSON')
+    for f in data['features']:
+        geo=f.get('geometry') or {}
+        coords=geo.get('coordinates',[])
+        if geo.get('type')=='LineString':coords=[coords]
+        elif geo.get('type')!='MultiLineString':continue
+        for line in coords:
+            if len(line)<2:continue
+            if not all(len(p)>=2 and all(type(q) in (int,float) and math.isfinite(q) for q in p[:2]) and -180<=p[0]<=180 and -90<=p[1]<=90 for p in line):raise ValueError('Invalid coastline coordinate')
+            yield line
+def clip_segment(a,b,bounds):
+    lo,hi,s,n=bounds;x,y=a[:2];u,v=b[:2];dx=u-x;dy=v-y
+    if abs(dx)>180:return None
+    low,high=0.,1.
+    for p,q in ((-dx,x-lo),(dx,hi-x),(-dy,y-s),(dy,n-y)):
+        if p==0:
+            if q<0:return None
+        else:
+            k=q/p
+            if p<0:low=max(low,k)
+            else:high=min(high,k)
+            if low>high:return None
+    return ((x+low*dx,y+low*dy),(x+high*dx,y+high*dy))
+def coast_image(lines,bounds,size):
+    lo,hi,s,n=bounds;w,h=size
+    im=Image.new('RGBA',size);d=ImageDraw.Draw(im)
+    def xy(p):return ((p[0]-lo)/(hi-lo)*(w-1),(n-p[1])/(n-s)*(h-1))
+    for line in lines:
+        if max(p[0] for p in line)<lo or min(p[0] for p in line)>hi or max(p[1] for p in line)<s or min(p[1] for p in line)>n:continue
+        for a,b in zip(line,line[1:]):
+            seg=clip_segment(a,b,bounds)
+            if seg:
+                pts=[xy(p) for p in seg]
+                d.line(pts,fill=(5,20,33,255),width=5)
+                d.line(pts,fill=(225,243,248,255),width=2)
+    return im
+def coast_layers(bounds,size,fetch=fetch_ne):
+    lines=[line for name in NE_FILES for line in lines_from_geojson(fetch(name))]
+    if not lines:raise ValueError('No geographic coastline geometry')
+    out={key:coast_image(lines,bb,size) for key,bb in bounds.items()}
+    if not out['wide'].getchannel('A').getbbox():raise ValueError('No coastline in regional view')
+    return out
+def satellite_time_label(stamp):
+    x=dt.datetime.fromisoformat(stamp.replace('Z','+00:00'))
+    if x.tzinfo is None:raise ValueError('Timestamp has no zone')
+    return x.astimezone(dt.timezone.utc).strftime('%d/%m/%Y %H:%M UTC')+' | '+x.astimezone(dt.timezone(dt.timedelta(hours=4))).strftime('%d/%m/%Y %H:%M MUT')
+def scale_bar(draw,rect,font,language='fr'):
+    x,y,w,h=rect
+    for i in range(w):
+        draw.line((x+i,y,x+i,y+h),fill=palette_rgb(round(i*255/max(1,w-1))))
+    draw.text((x+w+12,y-5),'0–255 · luminosité IR, pas °C' if language=='fr' else '0–255 · limier IR, pa °C',font=font,fill='#e8f4fa')
+def fullscreen_frame(image,stamp,credit,enhanced,number,total):
+    from PIL import ImageOps,ImageFont
+    im=Image.new('RGB',(3840,2160),'#091525');d=ImageDraw.Draw(im)
+    font=lambda n:ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',n)
+    pic=ImageOps.contain(image.convert('RGB'),(3840,1810),Image.Resampling.LANCZOS)
+    im.paste(pic,((3840-pic.width)//2,178+(1810-pic.height)//2))
+    d.text((65,24),'INSIDE MAURITIUS | ANIMATION SATELLITE OBSERVÉE',font=font(52),fill='#42d9ee')
+    d.text((65,96),satellite_time_label(stamp)+f'   •   {number}/{total}',font=font(40),fill='white')
+    if enhanced:scale_bar(d,(65,1990,380,24),font(34))
+    d.text((65,2040),credit+' | Images datées, sans interpolation. Pas une prévision.',font=font(32),fill='#dce8f0')
+    return im

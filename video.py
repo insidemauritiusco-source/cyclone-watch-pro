@@ -12,6 +12,7 @@ from broadcast_gate import fingerprint, report_key
 from forecast_video import load_forecast, forecast_words, zoom_scene_holds
 from tv_layout import render_card, logo_transparent, ass_captions, observed_track
 from geo_satellite import build as build_geo_satellite
+from premium_graphics import satellite_time_label, fullscreen_frame
 GRAPHIC=os.getenv('GRAPHIC_LANGUAGE','auto')
 LOGO=os.getenv('BROADCAST_LOGO','off')=='on'
 if GRAPHIC not in ('auto','fr','mfe'):raise ValueError('Invalid graphic language')
@@ -142,7 +143,25 @@ print('Geographic satellite overlay:',GEO['status'],len(GEO['frames']), 'dated f
 def satellite_map(zoom,step,total):
     if not GEO_IMAGES:return None
     keys=list(GEO_IMAGES);key=keys[round(step*(len(keys)-1)/max(1,total-1))];mode='close' if zoom else 'wide'
-    return {'bounds':tuple(GEO['bounds'][mode]),'image':GEO_IMAGES[key][mode],'captured':dt.datetime.fromisoformat(key).strftime('%d/%m/%Y %H:%M'),'credit':GEO['credit']}
+    meta=next(f for f in GEO['frames'] if f['captured_at']==key)
+    return {'bounds':tuple(GEO['bounds'][mode]),'image':GEO_IMAGES[key][mode],'captured':dt.datetime.fromisoformat(key).strftime('%d/%m/%Y %H:%M'),'time_label':satellite_time_label(key),'credit':GEO['credit'],'coast_credit':GEO.get('coastline'),'enhanced':meta.get('brightness_enhanced',{}).get(mode,False)}
+# Separate full-screen 4K observed satellite animation, for review only.
+FULL_SATELLITE=None
+if len(GEO_IMAGES)>=2 and not PREVIEW:
+    scene_files=[]
+    for i,key in enumerate(GEO_IMAGES):
+        meta=next(f for f in GEO['frames'] if f['captured_at']==key)
+        credit=GEO['credit']+(' | Natural Earth / coastline' if GEO.get('coastline') else '')
+        card=fullscreen_frame(GEO_IMAGES[key]['wide'],key,credit,meta.get('brightness_enhanced',{}).get('wide',False),i+1,len(GEO_IMAGES))
+        f=TMP/f'satellite-full-{i}.png';card.save(f);scene_files.append(f)
+    manifest=TMP/'satellite-full.txt'
+    manifest.write_text(''.join("file '"+str(p)+"'\nduration 2\n" for p in scene_files)+"file '"+str(scene_files[-1])+"'\n")
+    dest=OUT/'satellite-fullscreen-4k.mp4'
+    subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-f','concat','-safe','0','-i',str(manifest),'-vf','fps=24,format=yuv420p','-an','-c:v','libx264','-preset','ultrafast','-crf','23','-threads','4','-t',str(len(scene_files)*2),'-movflags','+faststart',str(dest)],check=True)
+    probe=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-of','json',str(dest)]))
+    assert any(s.get('width')==3840 and s.get('height')==2160 for s in probe['streams'])
+    FULL_SATELLITE=dest.name
+    print('PASS full-screen 4K satellite sequence:',len(scene_files),'observed frames')
 def motion_for(language,audio_duration,labels):
     visual_language=GRAPHIC if GRAPHIC!='auto' else language
     long_report=language=='fr' and FRENCH_LENGTH=='long'
@@ -198,8 +217,8 @@ if fresh:
 else:narration+="Les conditions actuelles ne sont pas vérifiées. "
 narration+=("Image satellite publiée par les services météorologiques. " if sat else "Image satellite indisponible. ")+forecast_words(FORECAST,'fr')+" Suivez les avertissements officiels de la météo de Maurice."
 if FRENCH_LENGTH=='long':
-    parts=["Bonjour et bienvenue dans le journal météo d'Inside Mauritius.",
-           "Voici le point sur la surveillance cyclonique dans le sud-ouest de l'océan Indien."]
+    parts=["Bienvenue à tous. Voici le journal météo d'Inside Mauritius.",
+           "Notre rédaction fait le point sur la surveillance cyclonique dans le sud-ouest de l'océan Indien."]
     if S.get('name') and S.get('observed'):
         parts.extend([f"Le dernier bulletin récupéré mentionne {name}.",f"L'observation est datée du {obs}."])
     else:parts.append("Les détails d'un système tropical ne sont pas confirmés.")
@@ -340,5 +359,5 @@ for code,script,gender,language in [('fr',narration,'female','fr'),('fr-male',na
         quality_checks[code][variant]={'width':vv['width'],'height':vv['height'],'audio':True,'caption_check':portrait_ass.is_file() and landscape_ass.is_file(),'caption_mode':'ASS render completed; visual placement requires review','av_delta':abs(float(vv['duration'])-float(av['duration']))}
         print(f'{code}: {variant} embedded captions, {width}x{height}, verified')
     print(f'{code}: 4K/audio/subtitles verified ({audio_duration:.2f}s); {voices[code]}')
-(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'report_key':report_key(D,FORECAST),'official_forecast':FORECAST,'geographic_satellite_overlay':GEO,'forecast_source':'Météo-France RSMC La Réunion via WMO' if FORECAST else None,'forecast_note':'Issued positions only, no interpolated positions or forecast landfall','publication_status':'review_required','french_length':FRENCH_LENGTH,'report_durations':report_durations,'duration_adjustments':duration_adjustments,'studio_version':25,'posters':posters,'poster_resolution':'2160x3840','poster_publication_status':'review_required','quality_checks':quality_checks,'sequence_note':'Chronological sequence fitted to measured narration; no simulated cloud motion','track_points':observed_track(D),'track_note':'Recorded bulletin positions only; satellite times are independent','graphic_language':GRAPHIC,'logo_included':LOGO,'subtitle_layout':'V24 larger type, dedicated safe area, sentence timed'},indent=2,ensure_ascii=False))
+(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'report_key':report_key(D,FORECAST),'official_forecast':FORECAST,'geographic_satellite_overlay':GEO,'premium_satellite_fullscreen':FULL_SATELLITE,'premium_satellite_publication_status':'review_required','forecast_source':'Météo-France RSMC La Réunion via WMO' if FORECAST else None,'forecast_note':'Issued positions only, no interpolated positions or forecast landfall','publication_status':'review_required','french_length':FRENCH_LENGTH,'report_durations':report_durations,'duration_adjustments':duration_adjustments,'studio_version':25,'posters':posters,'poster_resolution':'2160x3840','poster_publication_status':'review_required','quality_checks':quality_checks,'sequence_note':'Chronological sequence fitted to measured narration; no simulated cloud motion','track_points':observed_track(D),'track_note':'Recorded bulletin positions only; satellite times are independent','graphic_language':GRAPHIC,'logo_included':LOGO,'subtitle_layout':'V24 larger type, dedicated safe area, sentence timed'},indent=2,ensure_ascii=False))
 print('Videos rendered. Satellite included:',bool(sat))

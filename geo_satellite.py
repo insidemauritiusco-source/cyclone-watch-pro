@@ -6,6 +6,7 @@ import datetime as dt, io, math, re, hashlib, urllib.request, urllib.parse
 import xml.etree.ElementTree as ET
 from PIL import Image, ImageStat
 from forecast_video import timestamp, zoom_bounds, inside
+from premium_graphics import enhance, coast_layers, NE_CREDIT
 UTC=dt.timezone.utc
 BASE='https://view.eumetsat.int/geoserver/wms'
 LAYER='msg_iodc:ir108'
@@ -90,7 +91,7 @@ def covers(bounds,extent):
     if not extent:return False
     lo,hi,south,north=bounds;w,e,s,n=extent
     return w<=lo<hi<=e and s<=south<north<=n
-def build(data,forecast,now,fetch=request):
+def build(data,forecast,now,fetch=request,coast_fetch=None):
     """Return two consistently projected views or an explicitly labelled fallback.
     Use no more than four real image times and no fabricated intermediate images.
     """
@@ -118,9 +119,16 @@ def build(data,forecast,now,fetch=request):
             if any(x.getchannel('A').getextrema()[0]!=0 or x.getchannel('A').getextrema()[1]==0 for x in coastline.values()):raise ValueError('Invalid coast transparency')
         except Exception as e:
             coastline={};print('Geographic coast layer unavailable:',str(e))
+        coast_credit='EUMETSAT vector overlay' if coastline else None
+        # Natural Earth includes both main and minor island coastlines. No guessed outlines.
+        if not coastline and (fetch is request or coast_fetch is not None):
+            try:
+                coastline=coast_layers({'wide':wide,'close':close},SIZE,**({'fetch':coast_fetch} if coast_fetch is not None else {}))
+                coast_credit=NE_CREDIT
+            except Exception as e:print('Natural Earth coastline unavailable:',str(e))
         imgs={};seen=set()
         for when in chosen:
-            pair={};hashes={}
+            pair={};hashes={};enhanced={}
             try:
                 for key,bb in [('wide',wide),('close',close)]:
                     raw=fetch(bbox_params(bb,LAYER,when),12_000_000);im=decode(raw)
@@ -128,15 +136,16 @@ def build(data,forecast,now,fetch=request):
                         x,y=pixel(bb,p['lat'],p['lon'])
                         if not (0<=x<SIZE[0] and 0<=y<SIZE[1]) or im.getpixel((int(x),int(y)))[3]<250:raise ValueError('Missing satellite data at official point')
                     hashes[key]=hashlib.sha256(im.tobytes()).hexdigest()
+                    im,enhanced[key]=enhance(im)
                     if key in coastline:im=Image.alpha_composite(im,coastline[key])
                     pair[key]=im.convert('RGB')
                 if hashes['close'] in seen:continue
                 seen.add(hashes['close'])
                 stamp=when.isoformat();imgs[stamp]=pair
-                result['frames'].append({'captured_at':stamp,'sha256':hashes})
+                result['frames'].append({'captured_at':stamp,'sha256':hashes,'brightness_enhanced':enhanced})
             except Exception as e:print('Geographic satellite frame rejected:',str(e))
         if not imgs:raise ValueError('No usable timestamped raster pairs')
-        result.update(status='ok',reason=None,bounds={'wide':wide,'close':close},coastline=COAST if coastline else None,credit='Contains modified EUMETSAT Meteosat data '+str(now.year),timestamp_note='Observed satellite imagery, at least one hour delayed; independent of bulletin validity times; cloud parallax possible')
+        result.update(status='ok',reason=None,bounds={'wide':wide,'close':close},coastline=coast_credit,brightness_scale='Fixed display brightness 0–255, not temperature or storm intensity',credit='Contains modified EUMETSAT Meteosat data '+str(now.year),timestamp_note='Observed satellite imagery, at least one hour delayed; independent of bulletin validity times; cloud parallax possible')
         return result,imgs
     except Exception as e:
         result.update(status='unavailable',reason=str(e),frames=[])
