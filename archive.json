@@ -60,7 +60,7 @@
       "checked_at": "2026-11-24T09:11:03.159156+00:00"
     }
   ],
-  "last_successful_check": "2026-11-24T10:46:30.278504+00:00",
+  "last_successful_check": "2026-11-24T10:54:18.909933+00:00",
   "source": "Mauritius Meteorological Services",
   "storm_url": "https://metservice.intnet.mu/current-cyclone.php",
   "warning_url": "https://metservice.intnet.mu/tropical-cyclone/current-cyclone.php",
