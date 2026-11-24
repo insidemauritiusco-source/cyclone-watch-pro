@@ -12,27 +12,39 @@ on:
         type: choice
         options: ['0.75', '1.0', '1.15']
         default: '1.0'
+  schedule:
+    - cron: '14,44 * * * *'
   push:
     branches: [main]
     paths:
       - 'video.py'
       - 'media.py'
+      - 'broadcast_gate.py'
       - '.github/workflows/video.yml'
 concurrency:
   group: cyclone-video-render
   cancel-in-progress: false
 permissions:
   contents: read
+  actions: read
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Check for new verified bulletin
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python update.py
+          python broadcast_gate.py
       - name: Install rendering tools
+        if: steps.gate.outputs.render == 'true'
         timeout-minutes: 4
         run: |
           missing=()
@@ -49,6 +61,7 @@ jobs:
           ffmpeg -version
           espeak-ng --version
       - name: Prepare optional neural speech model
+        if: steps.gate.outputs.render == 'true'
         timeout-minutes: 4
         continue-on-error: true
         run: |
@@ -61,16 +74,23 @@ jobs:
           curl -fL --retry 1 --max-time 60 "$base/fr_FR-tom-medium.onnx" -o voice-model/fr_FR-tom-medium.onnx
           curl -fL --retry 1 --max-time 30 "$base/fr_FR-tom-medium.onnx.json" -o voice-model/fr_FR-tom-medium.onnx.json
       - name: Retrieve official observation and imagery
-        run: |
-          python update.py
-          python media.py
+        if: steps.gate.outputs.render == 'true'
+        run: python media.py
       - name: Render 4K MP4 and synthetic voice
+        if: steps.gate.outputs.render == 'true'
         env:
           VOICE_SPEED: ${{ inputs.speed || '1.0' }}
           VOICE_VOLUME: ${{ inputs.volume || '1.0' }}
         run: python video.py
       - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.render == 'true'
         with:
           name: Inside-Mauritius-4K-Weather-Video
           path: video-output/
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.render == 'true'
+        with:
+          name: Inside-Mauritius-Broadcast-Manifest
+          path: video-output/source.json
           retention-days: 30

@@ -6,6 +6,7 @@ OUT=ROOT/'video-output'; OUT.mkdir(exist_ok=True)
 D=json.loads((ROOT/'data.json').read_text()); S=D.get('storm') or {}
 W,H=2160,3840
 PREVIEW='--preview-only' in sys.argv
+from broadcast_gate import fingerprint
 SPEED=float(os.getenv('VOICE_SPEED','1.0'))
 VOLUME=float(os.getenv('VOICE_VOLUME','1.0'))
 if not 0.85<=SPEED<=1.15 or not 0.5<=VOLUME<=1.25:raise ValueError('Voice settings out of range')
@@ -172,7 +173,7 @@ def spoken(text,code):
 narration=spoken(narration,'fr');kreol=spoken(kreol,'mfe')
 (OUT/'narration-fr.txt').write_text(narration)
 (OUT/'narration-mfe.txt').write_text(kreol)
-voices={}; videos={}; previews={}; captions={}
+voices={}; videos={}; previews={}; captions={}; formats={}
 def duration(p):
     return float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','default=noprint_wrappers=1:nokey=1',str(p)],text=True).strip())
 def timecode(s,sep='.'):
@@ -223,6 +224,29 @@ for code,script,gender,language in [('fr',narration,'female','fr'),('fr-male',na
     assert any(x.get('codec_type')=='subtitle' for x in probe['streams'])
     assert abs(float(video_stream['duration'])-float(audio_stream['duration']))<0.15,'Video and narration duration mismatch'
     videos[code]=video.name
+    # Social-ready versions keep the complete original image and reserve a separate
+    # subtitle strip. Landscape has the full satellite image on the left and the
+    # original dated bulletin on the right; no extrapolated cloud motion.
+    formats[code]={'original':video.name}
+    for variant,width,height in [('4k',2160,3840),('hd',1080,1920),('landscape',1920,1080)]:
+        dest=OUT/f'weather-{code}-{variant}.mp4'
+        if variant=='landscape':
+            # The satellite panel is cropped from each real observed frame, never stretched.
+            # The entire vertical bulletin remains visible beside it.
+            layout="split=2[main][detail];[main]scale=486:864[card];[detail]crop=1944:1354:108:836,scale=1376:864:force_original_aspect_ratio=decrease,pad=1376:864:(ow-iw)/2:(oh-ih)/2:color=0x102337[large];[large][card]hstack=inputs=2,pad=1920:1080:29:22:color=0x07121e"
+            vf=layout+f",subtitles={srt}:force_style='FontName=DejaVu Sans,FontSize=19,Alignment=2,MarginV=11,Outline=1,Shadow=0,BackColour=&H90000000,BorderStyle=3'"
+        else:
+            # Reserve 15% of the output for permanent, legible social captions.
+            bodyh=int(height*.85)//2*2
+            vf=f"scale=-2:{bodyh},pad={width}:{height}:(ow-iw)/2:0:color=0x07121e,subtitles={srt}:force_style='FontName=DejaVu Sans,FontSize=15,Alignment=2,MarginV=19,Outline=1,Shadow=0,BackColour=&H90000000,BorderStyle=3'"
+        filters=['-filter_complex','[0:v]'+vf+'[out]','-map','[out]'] if variant=='landscape' else ['-vf',vf,'-map','0:v:0']
+        subprocess.run(['ffmpeg','-hide_banner','-loglevel','error','-y','-i',str(video),*filters,'-map','0:a:0','-c:v','libx264','-preset','ultrafast','-crf','24','-threads','4','-pix_fmt','yuv420p','-c:a','copy','-t',f'{audio_duration:.6f}','-movflags','+faststart',str(dest)],check=True)
+        check=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-of','json',str(dest)]))
+        vv=next(x for x in check['streams'] if x['codec_type']=='video');av=next(x for x in check['streams'] if x['codec_type']=='audio')
+        assert (vv['width'],vv['height'])==(width,height)
+        assert abs(float(vv['duration'])-float(av['duration']))<0.20
+        formats[code][variant]=dest.name
+        print(f'{code}: {variant} embedded captions, {width}x{height}, verified')
     print(f'{code}: 4K/audio/subtitles verified ({audio_duration:.2f}s); {voices[code]}')
-(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW},indent=2,ensure_ascii=False))
+(OUT/'source.json').write_text(json.dumps({'observation':S,'checked_at':D.get('checked_at'),'warning':warning,'source_status':D.get('source_status'),'satellite_url':image_url,'satellite_capture':image_time,'generated_at':now.isoformat(),'video_resolution':'2160x3840','voice':voices,'satellite_frame_count':len(frame_images),'satellite_frame_times':[f[0].isoformat() for f in frame_images],'voice_attribution':'SIWIS French Speech Synthesis Database / Piper SIWIS, CC BY 4.0 (when neural voice used)','videos':videos,'previews':previews,'captions':captions,'voice_speed':SPEED,'voice_volume':VOLUME,'voice_model_sources':{'siwis':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/siwis/medium/MODEL_CARD','tom':'https://huggingface.co/rhasspy/piper-voices/blob/main/fr/fr_FR/tom/medium/MODEL_CARD'},'preview_only':PREVIEW,'formats':formats,'observation_key':fingerprint(D),'publication_status':'review_required','studio_version':13},indent=2,ensure_ascii=False))
 print('Videos rendered. Satellite included:',bool(sat))
