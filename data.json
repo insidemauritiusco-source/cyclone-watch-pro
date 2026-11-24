@@ -1,14 +1,14 @@
 {
-  "checked_at": "2026-11-24T13:25:14.570030+00:00",
+  "checked_at": "2026-11-24T13:36:31.456747+00:00",
   "source_status": "ok",
   "warning": "No warning reported",
   "storm": {
-    "name": "Tropical Depression (B03)",
-    "observed": "24 November 2026 10 AM",
-    "lat": -9.7,
-    "lon": 76.8,
-    "pressure": 1003,
-    "speed": 12.0,
+    "name": "Tropical Disturbance (B03)",
+    "observed": "24 November 2026 04 PM",
+    "lat": -10.4,
+    "lon": 77.5,
+    "pressure": 1006,
+    "speed": 10.0,
     "direction": "South Southwest",
     "wind": null
   },
@@ -30,6 +30,16 @@
       "lon": 76.8,
       "pressure": 1003,
       "speed": 12.0,
+      "direction": "South Southwest",
+      "wind": null
+    },
+    {
+      "name": "Tropical Disturbance (B03)",
+      "observed": "24 November 2026 04 PM",
+      "lat": -10.4,
+      "lon": 77.5,
+      "pressure": 1006,
+      "speed": 10.0,
       "direction": "South Southwest",
       "wind": null
     }
