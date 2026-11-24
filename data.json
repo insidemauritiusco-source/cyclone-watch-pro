@@ -1,6 +1,6 @@
 {
-  "checked_at": "2026-11-24T18:30:46.903835+00:00",
-  "source_status": "ok",
+  "checked_at": "2026-11-24T23:33:10.649552+00:00",
+  "source_status": "incomplete",
   "warning": "No warning reported",
   "storm": {
     "name": "Tropical Disturbance (B03)",
@@ -44,5 +44,7 @@
       "wind": null
     }
   ],
-  "errors": []
+  "errors": [
+    "Official bulletin body unavailable"
+  ]
 }
