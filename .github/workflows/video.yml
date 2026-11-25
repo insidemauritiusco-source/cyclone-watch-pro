@@ -42,6 +42,7 @@ on:
       - 'official_forecast.py'
       - 'media.py'
       - 'broadcast_gate.py'
+      - 'update.py'
       - 'v31-review.cjs'
       - '.github/workflows/video.yml'
 concurrency:
@@ -118,7 +119,15 @@ jobs:
           python test-forecast-video.py
           python test-geo-satellite.py
           python test-premium-graphics.py
+          python update.py
+          python official_forecast.py
+          python -c 'import json; from broadcast_gate import current; import sys; sys.exit(0 if current(json.load(open("data.json"))) else "V31.1 blocked immediately before rendering: official data unverified")'
           python video.py
+      - name: V31.1 post-render official freshness recheck
+        if: steps.gate.outputs.render == 'true'
+        run: |
+          python update.py
+          python official_forecast.py
       - name: V31 technical review (no publication)
         if: steps.gate.outputs.render == 'true'
         run: node v31-review.cjs draft video-output
