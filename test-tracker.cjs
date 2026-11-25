@@ -20,3 +20,13 @@ assert.equal(distance({lat:NaN,lon:57},{lat:-21,lon:57}),null);
 assert.equal(smartZoom({lat:-1,lon:57},1),1);
 for(const ratio of [.4,1,2,5])assert.ok(smartZoom({lat:-10,lon:77},ratio)>=2&&smartZoom({lat:-10,lon:77},ratio)<=4);
 console.log('PASS V27 distance and smart zoom guards');
+
+const {warningVerified}=require('./tracker.js');
+const partial={checked_at:t,source_status:'incomplete',warning_status:'retrieved',storm_status:'empty_page',warning:'No warning reported',storm:null};
+assert.equal(warningVerified(partial,n),true);
+assert.equal(warningVerified({...partial,warning:'Class II'},n),true);
+assert.equal(warningVerified({...partial,warning_status:'unverified'},n),false);
+assert.equal(warningVerified({...partial,warning:'Unknown'},n),false);
+assert.equal(warningVerified(partial,n+3600000),false);
+assert.equal(select(partial,f,n),null);
+console.log('PASS independent MMS warning, stale warning rejection and gated storm forecast');
