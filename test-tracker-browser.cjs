@@ -30,7 +30,28 @@ await p.locator('#quickFollow').click();if(await p.locator('#quickFollow').getAt
 await p.locator('#tvMode').click();await p.waitForFunction(()=>document.body.classList.contains('v28TV'));assert.ok(await p.locator('#tvSummary').isVisible());assert.match(await p.locator('#tvStorm').textContent(),/B03/);assert.match(await p.locator('#tvWarning').textContent(),/No warning reported/);assert.equal(await p.locator('#stormPanel').isVisible(),false);assert.ok(await visible());const fullBox=await p.locator('#map').evaluate(e=>{const b=e.viewBox.baseVal,m=e.getScreenCTM();return {x:b.x,y:b.y,w:b.width,h:b.height,sx:m.a,sy:m.d}});assert.ok(Math.abs(fullBox.sx-fullBox.sy)<1e-6);assert.ok(fullBox.w<=1800.01&&fullBox.h<=1140.01);
 await p.locator('#tvProfile').selectOption('hd');assert.equal(await p.locator('body').getAttribute('data-tv-profile'),'hd');await p.locator('#tvProfile').selectOption('uhd');assert.equal(await p.locator('body').getAttribute('data-tv-profile'),'uhd');await p.locator('#tvProfile').selectOption('auto');
 assert.equal(await p.locator('html').getAttribute('data-tracker-runtime'),'30');await p.locator('#reset').click();assert.match(await p.locator('#tvViewNote').textContent(),/full region/);const fitBox=await p.locator('#map').getAttribute('viewBox');await p.locator('#tvFill').click();assert.match(await p.locator('#tvViewNote').textContent(),/crop/);assert.notEqual(await p.locator('#map').getAttribute('viewBox'),fitBox);await p.locator('#tvFill').click();assert.equal(await p.locator('#tvFill').getAttribute('aria-pressed'),'true');
-if(await p.locator('#tvControls').getAttribute('aria-pressed')==='false')await p.locator('#tvControls').click();await p.locator('#tvControls').focus();await p.locator('#tvControls').click();await p.locator('.layers').waitFor({state:'hidden'});assert.ok(await p.locator('#tvWarning').isVisible());assert.ok(await p.locator('#frameTime').isVisible());await p.locator('#map').dispatchEvent('pointerdown',{pointerId:1,pointerType:'mouse',button:1});assert.ok(await p.locator('.layers').isVisible());await p.locator('#tvControls').click();await p.locator('#tvControls').click();assert.ok(await p.locator('.layers').isVisible());
+// V31.3: synchronize the TV controls with their actual visible state. At
+// 320px Chrome can spend long enough on layout/fullscreen work for the
+// eight-second auto-hide to run between two Playwright interactions.
+const tvButton=p.locator('#tvControls');
+const quiet=()=>p.evaluate(()=>document.body.classList.contains('v29Quiet'));
+const setTVControls=async(show)=>{
+  if((await quiet())===show)await tvButton.click();
+  await p.waitForFunction(expected=>document.body.classList.contains('v29Quiet')===!expected,show);
+  const visibleNow=await p.locator('.layers').isVisible();
+  assert.equal(visibleNow,show,`TV controls: ${size.width}x${size.height}, show=${show}`);
+};
+await setTVControls(true);
+await tvButton.focus();
+await setTVControls(false);
+assert.ok(await p.locator('#tvWarning').isVisible(),'TV warning stays visible when controls hidden');
+assert.ok(await p.locator('#frameTime').isVisible(),'Satellite frame time stays visible when controls hidden');
+await p.locator('#map').dispatchEvent('pointerdown',{pointerId:1,pointerType:'mouse',button:1});
+await p.waitForFunction(()=>!document.body.classList.contains('v29Quiet'));
+assert.ok(await p.locator('.layers').isVisible(),'Map interaction reveals TV controls');
+await setTVControls(false);
+await setTVControls(true);
+console.log('PASS TV controls hide/show interaction at '+size.width+'x'+size.height);
 assert.ok(await p.locator('#regionalInset').isVisible());assert.equal(await p.locator('#insetSat').getAttribute('href'),await p.locator('#sat').getAttribute('href'));assert.match(await p.locator('#insetTrack').textContent(),/Mauritius/);
 await p.locator('#tvMode').click();await p.waitForFunction(()=>!document.body.classList.contains('v28TV'));
 await p.locator('#studioV30').click();assert.ok(await p.locator('#studioDialog').isVisible());assert.match(await p.locator('#studioScript').textContent(),/PREVIEW — NOT APPROVED/);await p.locator('#studioLanguage').selectOption('fr');assert.match(await p.locator('#studioScript').textContent(),/NON APPROUVÉ/);assert.match(await p.locator('#studioDiagnostics').textContent(),/manual review required/);assert.equal(await p.locator('#studioVertical').getAttribute('href'),'index.html#videoStudio');assert.equal(await p.locator('#studioAutoPlay').isChecked(),false);await p.locator('#studioAutoPlay').check();await p.locator('#studioClose').click();
