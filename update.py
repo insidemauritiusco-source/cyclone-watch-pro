@@ -19,8 +19,10 @@ class BulletinPage(Page):
     """Mark actual HTML headings, not duplicate links in the site navigation."""
     MARKER='__MMS_TITLE__'
     def handle_starttag(self,tag,attrs):
-        if tag in ('h1','h2','h3','h4'): self.parts.append('\n'+self.MARKER)
-        super().handle_starttag(tag,attrs)
+        if tag in ('h1','h2','h3','h4'):
+            self.parts.append('\n'+self.MARKER)
+        else:
+            super().handle_starttag(tag,attrs)
 
 def section(html, heading):
     p=BulletinPage(); p.feed(html); lines=p.text().splitlines()
