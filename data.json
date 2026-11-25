@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-11-25T02:35:05.392539+00:00",
+  "checked_at": "2026-11-25T03:56:35.797172+00:00",
   "source_status": "incomplete",
   "warning": "No warning reported",
   "storm": {
@@ -45,6 +45,6 @@
     }
   ],
   "errors": [
-    "Official bulletin body unavailable"
+    "current-cyclone.php: Official bulletin body unavailable"
   ]
 }
