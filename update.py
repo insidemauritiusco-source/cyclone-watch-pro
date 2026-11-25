@@ -1,5 +1,5 @@
 """Retrieve MMS public pages. Fail closed if source structure changes."""
-import json, re, urllib.request, datetime, pathlib, sys, time
+import json, re, urllib.request, urllib.parse, datetime, pathlib, sys, time
 from html.parser import HTMLParser
 ROOT=pathlib.Path(__file__).resolve().parent
 BASE='https://metservice.intnet.mu/'
@@ -29,9 +29,37 @@ def section(html, heading):
                 break
     raise ValueError('Official bulletin body unavailable')
 def get(path):
-    req=urllib.request.Request(BASE+path,headers={'User-Agent':'InsideMauritiusCycloneWatch/1.0 (public weather monitor)'})
+    req=urllib.request.Request(BASE+path,headers={'User-Agent':'InsideMauritiusCycloneWatch/1.0 (public weather monitor)','Cache-Control':'no-cache','Accept':'text/html'})
     with urllib.request.urlopen(req, timeout=25) as res:
-        return res.read(2_000_000).decode(res.headers.get_content_charset() or 'utf-8',errors='replace')
+        final=urllib.parse.urlsplit(res.geturl())
+        if final.scheme!='https' or final.hostname!='metservice.intnet.mu' or final.username or final.password or final.port not in (None,443):
+            raise ValueError('Unexpected official source redirect')
+        raw=res.read(2_000_001)
+        if len(raw)>2_000_000: raise ValueError('Official page exceeds size limit')
+        return raw.decode(res.headers.get_content_charset() or 'utf-8',errors='replace')
+def retrieve(path, parser, fetch=None, sleep=None):
+    """Retry retrieval AND parsing, never substitute an unofficial source."""
+    fetch=fetch or get; sleep=sleep or time.sleep
+    for attempt in range(1,4):
+        html=None
+        try:
+            html=fetch(path)
+            value=parser(html)
+            if isinstance(value,str) and value.startswith('Unknown'):
+                raise ValueError('Warning not verified')
+            if isinstance(value,dict) and value.get('name')=='Reported tropical system (name unverified)':
+                raise ValueError('Storm name not verified')
+            print(f'MMS {path}: verified on attempt {attempt}',file=sys.stderr)
+            return value
+        except Exception as e:
+            if html is not None:
+                p=Page(); p.feed(html); lines=p.text().splitlines()
+                markers={k:sum(x.casefold()==k.casefold() for x in lines) for k in ('Current Cyclone','Current Storm/Cyclone','Weather')}
+                print(f'MMS {path}: attempt {attempt}/3; bytes={len(html.encode("utf-8"))}; lines={len(lines)}; headings={markers}; {type(e).__name__}: {e}',file=sys.stderr)
+            else:
+                print(f'MMS {path}: attempt {attempt}/3; retrieval failed: {type(e).__name__}: {e}',file=sys.stderr)
+            if attempt==3: raise ValueError(f'{path}: {e}') from e
+            sleep(2**attempt)
 def warning(html):
     text=section(html,'Current Cyclone')
     if re.search(r'\bno cyclone warning is in force in Mauritius\b',text,re.I): return 'No warning reported'
@@ -58,17 +86,17 @@ def storm(html):
     if not observed: raise ValueError('Observation time missing')
     return dict(name=name,observed=observed,lat=lat,lon=lon,pressure=int(pressure) if pressure else None,speed=float(speed) if speed else None,direction=direction,wind=None)
 def update():
-    target=ROOT/'data.json'; old=json.loads(target.read_text()) if target.exists() else {}; checked=datetime.datetime.now(datetime.timezone.utc).isoformat(); errors=[]
-    try: w=warning(get('tropical-cyclone/current-cyclone.php'))
+    target=ROOT/'data.json'; old=json.loads(target.read_text()) if target.exists() else {}; errors=[]
+    try: w=retrieve('tropical-cyclone/current-cyclone.php',warning)
     except Exception as e: w='Unknown — source unavailable'; errors.append(str(e))
     if w.startswith('Unknown'): errors.append('Warning not verified')
-    try: s=storm(get('current-cyclone.php'))
+    try: s=retrieve('current-cyclone.php',storm)
     except Exception as e: s=old.get('storm'); errors.append(str(e))
     if s and s.get('name')=='Cyclone Warning Bulletin Mauritius': s=None
     if s and s.get('name')=='Reported tropical system (name unverified)': errors.append('Storm name not verified')
     history=[x for x in old.get('history',[]) if x.get('name')!='Cyclone Warning Bulletin Mauritius']
     if not errors and s and (not history or history[-1]!=s): history.append(s)
-    result=dict(checked_at=checked,source_status='incomplete' if errors else 'ok',warning=w,storm=s,history=history[-100:],errors=errors)
+    result=dict(checked_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),source_status='incomplete' if errors else 'ok',warning=w,storm=s,history=history[-100:],errors=errors)
     temp=target.with_suffix('.tmp'); temp.write_text(json.dumps(result,ensure_ascii=False,indent=2)); temp.replace(target); print(json.dumps(result,ensure_ascii=False))
 if __name__=='__main__':
     if '--loop' in sys.argv:
