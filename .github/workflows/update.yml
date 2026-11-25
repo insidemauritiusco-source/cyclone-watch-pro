@@ -1,10 +1,20 @@
 name: Refresh and deploy Cyclone Watch Pro
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ['Render 4K satellite weather video']
-    types: [completed]
-    branches: [main]
+    inputs:
+      draft_run:
+        description: Reviewed V31 draft run ID (blank = weather refresh only)
+        type: string
+        required: false
+      package_sha256:
+        description: Exact reviewed package SHA-256 (from draft run summary)
+        type: string
+        required: false
+      approve_publication:
+        description: I reviewed this exact report and approve website publication
+        type: boolean
+        default: false
+        required: true
   schedule:
     - cron: '7,22,37,52 * * * *'
   push:
@@ -15,7 +25,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   refresh:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -24,6 +34,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -51,6 +64,7 @@ jobs:
       - name: Validate studio JavaScript
         run: |
           node --check tracker.js && node test-tracker.cjs
+          node test-v31.cjs
           node --check premium-player.js && node test-premium-player.cjs
           node --check v9.js && node --check video-player.js && node --check v15.js && node --check v6.js
           python -m py_compile media.py
@@ -74,18 +88,46 @@ jobs:
           python test-official-forecast.py
           node --check official-forecast.js && node test-official-forecast.cjs
           python official_forecast.py
-      - name: Retrieve latest successful video artifact
+      - name: Retrieve review queue metadata only
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
+        run: python broadcast_archive.py
+      - name: Approve exact reviewed report (manual main dispatch only)
+        if: github.event_name == 'workflow_dispatch' && inputs.approve_publication == true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRAFT_RUN: ${{ inputs.draft_run }}
+          APPROVED_PACKAGE_SHA: ${{ inputs.package_sha256 }}
         run: |
-          python broadcast_archive.py
-          if test -f broadcast-runs.txt; then
-            while read -r run_id; do
-              test -n "$run_id" || continue
-              rm -rf _video
-              if gh run download "$run_id" --name Inside-Mauritius-4K-Weather-Video --dir _video && test -f _video/source.json && test -f _video/weather-fr.mp4 && test -f _video/weather-mfe.mp4; then break; fi
-            done < broadcast-runs.txt
+          set -euo pipefail
+          [[ "$DRAFT_RUN" =~ ^[0-9]+$ && "$APPROVED_PACKAGE_SHA" =~ ^[a-f0-9]{64}$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$DRAFT_RUN" > _draft_run.json
+          python -c 'import json; r=json.load(open("_draft_run.json")); assert r["head_branch"]=="main" and r["status"]=="completed" and r["conclusion"]=="success" and r["path"].split("@")[0]==".github/workflows/video.yml"'
+          gh run download "$DRAFT_RUN" --name Inside-Mauritius-V31-Reviewed-Draft --dir _video
+          node v31-review.cjs approve _video "$DRAFT_RUN" publication-receipt.json
+          node v31-review.cjs release _video "$DRAFT_RUN" publication-receipt.json _approved
+          git config user.name 'cyclone-feed[bot]'
+          git config user.email 'cyclone-feed@users.noreply.github.com'
+          git add publication-receipt.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record manual V31 publication approval'
+            git push origin HEAD:main
+          fi
+      - name: Retrieve previously approved report only
+        if: github.event_name != 'workflow_dispatch' || inputs.approve_publication != true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if test -f publication-receipt.json; then
+            run_id="$(python -c 'import json; print(json.load(open("publication-receipt.json"))["run_id"])')"
+            if [[ "$run_id" =~ ^[0-9]+$ ]] && gh run download "$run_id" --name Inside-Mauritius-V31-Reviewed-Draft --dir _video; then
+              if ! node v31-review.cjs release _video "$run_id" publication-receipt.json _approved; then
+                rm -rf _approved
+                echo 'Approved report no longer eligible; weather dashboard only.'
+              fi
+            fi
           fi
       - name: Stage public files
         run: |
@@ -96,13 +138,9 @@ jobs:
           if test -f media.json; then cp media.json _site/; fi
           if test -f regional-sources.json; then cp regional-sources.json _site/; fi
           for f in satellite-archive.json source-health.json; do if test -f "$f"; then cp "$f" _site/; fi; done
-          if test -f _video/source.json && test -f _video/weather-fr.mp4 && test -f _video/weather-mfe.mp4; then
+          if test -f _approved/publication.json; then
             mkdir -p _site/video
-            cp _video/source.json _video/weather-fr.mp4 _video/weather-mfe.mp4 _site/video/
-            for f in satellite-fullscreen-4k.mp4 satellite-fullscreen-forecast-4k.mp4; do if test -s "_video/$f"; then cp "_video/$f" _site/video/; fi; done
-            for f in narration-fr.txt narration-mfe.txt weather-fr-male.mp4 weather-mfe-male.mp4 voice-fr.mp3 voice-fr-male.mp3 voice-mfe.mp3 voice-mfe-male.mp3 captions-fr.vtt captions-fr-male.vtt captions-mfe.vtt captions-mfe-male.vtt; do if test -f "_video/$f"; then cp "_video/$f" _site/video/; fi; done
-            for f in _video/poster-fr-4k.png _video/poster-mfe-4k.png; do if test -f "$f"; then cp "$f" _site/video/; fi; done
-            for f in _video/weather-*-4k.mp4 _video/weather-*-hd.mp4 _video/weather-*-landscape.mp4 _video/weather-*-landscape4k.mp4; do if test -f "$f"; then cp "$f" _site/video/; fi; done
+            cp -r _approved/. _site/video/
           fi
       - name: Stage independent satellite tracker
         run: |
@@ -136,6 +174,7 @@ jobs:
         with:
           path: _site
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: refresh
     runs-on: ubuntu-latest
     permissions:
