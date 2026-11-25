@@ -18,6 +18,8 @@ jobs:
         run: |
           node --check tracker.js
           node test-tracker.cjs
+          node --check v31-review.cjs
+          node test-v31.cjs
           node --check official-forecast.js
           node test-official-forecast.cjs
           node --check premium-player.js

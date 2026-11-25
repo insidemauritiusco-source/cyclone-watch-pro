@@ -42,6 +42,7 @@ on:
       - 'official_forecast.py'
       - 'media.py'
       - 'broadcast_gate.py'
+      - 'v31-review.cjs'
       - '.github/workflows/video.yml'
 concurrency:
   group: cyclone-video-render
@@ -51,10 +52,14 @@ permissions:
   actions: read
 jobs:
   render:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -114,10 +119,13 @@ jobs:
           python test-geo-satellite.py
           python test-premium-graphics.py
           python video.py
+      - name: V31 technical review (no publication)
+        if: steps.gate.outputs.render == 'true'
+        run: node v31-review.cjs draft video-output
       - uses: actions/upload-artifact@v4
         if: steps.gate.outputs.render == 'true'
         with:
-          name: Inside-Mauritius-4K-Weather-Video
+          name: Inside-Mauritius-V31-Reviewed-Draft
           path: video-output/
           retention-days: 30
       - uses: actions/upload-artifact@v4
