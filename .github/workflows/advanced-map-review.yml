@@ -21,6 +21,7 @@ jobs:
           node --check v31-review.cjs
           node test-v31.cjs
           python3 test-v31-1.py
+          python3 test-v31-2-parser.py
           node --check official-forecast.js
           node test-official-forecast.cjs
           node --check premium-player.js
