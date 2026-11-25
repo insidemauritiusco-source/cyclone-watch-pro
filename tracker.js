@@ -26,7 +26,7 @@ const islands=[['Mauritius',-20.2,57.5],['Rodrigues',-19.71,63.42],['Réunion',-
 function distance(a,b){if(!valid(a)||!valid(b))return null;const r=Math.PI/180,h=Math.sin((b.lat-a.lat)*r/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin((b.lon-a.lon)*r/2)**2;return Math.round(12742*Math.asin(Math.sqrt(Math.max(0,Math.min(1,h)))))}
 function smartZoom(p,ratio){if(!inMap(p))return 1;const q=Number.isFinite(ratio)&&ratio>0?ratio:W/H;return Math.min(4,Math.max(2,Math.max(W,H*q)/800))}
 function fillZoom(ratio){const q=Number.isFinite(ratio)&&ratio>0?ratio:W/H;return Math.max(W,H*q)/Math.min(W,H*q)}
-if(typeof module==='object'){module.exports={xy,select,frames,bearing,extent,distance,smartZoom,fillZoom};return}
+if(typeof module==='object'){module.exports={xy,select,frames,bearing,extent,distance,smartZoom,fillZoom,warningVerified};return}
 let data=null,feed=null,meta=null,images=[],i=0,timer=null,seq=0,enhanced=true,zoom=1,center=[900,570],forecastOn=true,gridOn=true,renderSeq=0,following=false,forecastTimer=null,forecastIndex=0,forecastKey='',monitor=false,lastCapture=null,refreshTimer=null,tv=false,tvWasPanel=false,tvFill=true,tvSaved=null,hideTimer=null,studioFrameKey='',studioVoice=null;
 const fmt=(s,z='Indian/Mauritius')=>Number.isFinite(Date.parse(s))?new Intl.DateTimeFormat('en-GB',{dateStyle:'medium',timeStyle:'short',timeZone:z}).format(new Date(s)):'—';
 const val=(v,u='')=>typeof v==='number'&&Number.isFinite(v)?v+u:'—';
