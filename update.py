@@ -15,19 +15,40 @@ class Page(HTMLParser):
     def handle_data(self, data):
         if not self.skip: self.parts.append(data)
     def text(self): return '\n'.join(' '.join(s.split()) for s in ''.join(self.parts).splitlines() if s.strip())
+class BulletinPage(Page):
+    """Mark actual HTML headings, not duplicate links in the site navigation."""
+    MARKER='__MMS_TITLE__'
+    def handle_starttag(self,tag,attrs):
+        if tag in ('h1','h2','h3','h4'): self.parts.append('\n'+self.MARKER)
+        super().handle_starttag(tag,attrs)
+
 def section(html, heading):
-    p=Page(); p.feed(html); lines=p.text().splitlines()
-    # The actual heading follows the global navigation. Use the last
-    # heading before the sidebar's Weather heading, not sidebar links.
-    for i,line in enumerate(lines):
-        if line.casefold()!=heading.casefold(): continue
-        for j in range(i+1,len(lines)):
-            if lines[j]=='Weather':
-                block=lines[i+1:j]
-                if block and block[0]!='Cyclone Warning Bulletin Mauritius':
-                    return '\n'.join(block)
-                break
-    raise ValueError('Official bulletin body unavailable')
+    p=BulletinPage(); p.feed(html); lines=p.text().splitlines()
+    marker=BulletinPage.MARKER
+    target=heading.casefold()
+    # Identify the page title by its heading element. Menu/sidebar links with
+    # the same words are not bulletin text.
+    candidates=[i for i,line in enumerate(lines) if line.startswith(marker) and line[len(marker):].strip().casefold()==target]
+    sidebar={'weather','tsunami','cyclone','satellite & chart','torrential rains',
+             'climate services','high waves','sun, moon & tides','about us',
+             'news and events'}
+    for i in candidates:
+        block=[]
+        for line in lines[i+1:]:
+            if line.startswith(marker):
+                label=line[len(marker):].strip()
+                if label.casefold() in sidebar or label.casefold()==target:
+                    break
+                # Preserve any subordinate heading inside the actual bulletin.
+                line=label
+            if line.strip(): block.append(line.strip())
+        # An empty title or a sidebar/menu-only response is never evidence that
+        # no cyclone exists, nor a valid current observation.
+        body='\n'.join(block).strip()
+        if body and body!='Cyclone Warning Bulletin Mauritius':
+            return body
+    if candidates: raise ValueError('Official bulletin body unavailable (title exists, content empty)')
+    raise ValueError('Official bulletin title unavailable (page structure changed)')
 def get(path):
     req=urllib.request.Request(BASE+path,headers={'User-Agent':'InsideMauritiusCycloneWatch/1.0 (public weather monitor)','Cache-Control':'no-cache','Accept':'text/html'})
     with urllib.request.urlopen(req, timeout=25) as res:
@@ -67,7 +88,7 @@ def warning(html):
     return 'Class '+m.group(1).upper() if m else 'Unknown — consult bulletin'
 def storm(html):
     t=section(html,'Current Storm/Cyclone'); lines=t.splitlines()
-    if re.search(r'\bno (?:active )?(?:storm|cyclone|tropical system)\b',t,re.I): return None
+    if any(re.fullmatch(r'No (?:active )?(?:storm|cyclone|tropical system)(?: (?:is )?(?:currently )?(?:reported|present|detected|in the region))?[.!]?',line.strip(),re.I) for line in lines): return None
     m=re.search(r'(?i)(\d+(?:\.\d+)?)\s*°?\s*([NS])\s*[,;/ ]*\s*(\d+(?:\.\d+)?)\s*°?\s*([EW])',t)
     if not m: raise ValueError('Position not recognized')
     lat=float(m.group(1))*(-1 if m.group(2).upper()=='S' else 1); lon=float(m.group(3))*(-1 if m.group(4).upper()=='W' else 1)
@@ -91,7 +112,7 @@ def update():
     except Exception as e: w='Unknown — source unavailable'; errors.append(str(e))
     if w.startswith('Unknown'): errors.append('Warning not verified')
     try: s=retrieve('current-cyclone.php',storm)
-    except Exception as e: s=old.get('storm'); errors.append(str(e))
+    except Exception as e: s=None; errors.append(str(e))
     if s and s.get('name')=='Cyclone Warning Bulletin Mauritius': s=None
     if s and s.get('name')=='Reported tropical system (name unverified)': errors.append('Storm name not verified')
     history=[x for x in old.get('history',[]) if x.get('name')!='Cyclone Warning Bulletin Mauritius']
