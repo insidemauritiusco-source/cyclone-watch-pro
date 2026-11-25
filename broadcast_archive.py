@@ -3,7 +3,7 @@ import json,os,subprocess,pathlib
 repo=os.environ['GITHUB_REPOSITORY']
 items=[]
 try:
-    raw=subprocess.check_output(['gh','api','repos/'+repo+'/actions/artifacts?name=Inside-Mauritius-4K-Weather-Video&per_page=100'],text=True,timeout=30)
+    raw=subprocess.check_output(['gh','api','repos/'+repo+'/actions/artifacts?name=Inside-Mauritius-V31-Reviewed-Draft&per_page=100'],text=True,timeout=30)
     for a in json.loads(raw).get('artifacts',[]):
         w=a.get('workflow_run') or {}
         if a.get('expired') or w.get('head_branch')!='main':continue
