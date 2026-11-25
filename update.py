@@ -109,18 +109,41 @@ def storm(html):
     if not observed: raise ValueError('Observation time missing')
     return dict(name=name,observed=observed,lat=lat,lon=lon,pressure=int(pressure) if pressure else None,speed=float(speed) if speed else None,direction=direction,wind=None)
 def update():
-    target=ROOT/'data.json'; old=json.loads(target.read_text()) if target.exists() else {}; errors=[]
-    try: w=retrieve('tropical-cyclone/current-cyclone.php',warning)
-    except Exception as e: w='Unknown — source unavailable'; errors.append(str(e))
-    if w.startswith('Unknown'): errors.append('Warning not verified')
-    try: s=retrieve('current-cyclone.php',storm)
-    except Exception as e: s=None; errors.append(str(e))
-    if s and s.get('name')=='Cyclone Warning Bulletin Mauritius': s=None
-    if s and s.get('name')=='Reported tropical system (name unverified)': errors.append('Storm name not verified')
+    target=ROOT/'data.json'
+    old=json.loads(target.read_text()) if target.exists() else {}
+    checked=datetime.datetime.now(datetime.timezone.utc).isoformat()
+    errors=[]
+    try:
+        w=retrieve('tropical-cyclone/current-cyclone.php',warning)
+        warning_status='retrieved'
+    except Exception as e:
+        w='Unknown — source unavailable'
+        warning_status='unverified'
+        errors.append(str(e))
+    try:
+        s=retrieve('current-cyclone.php',storm)
+        storm_status='reported' if s is not None else 'explicit_none'
+    except Exception as e:
+        s=None  # Never substitute a historical track for a live observation.
+        storm_status=('empty_page' if 'Official bulletin body unavailable (title exists, content empty)' in str(e)
+                      else 'unverified')
+        errors.append(str(e))
+    if s and s.get('name') in ('Cyclone Warning Bulletin Mauritius','Reported tropical system (name unverified)'):
+        s=None
+        storm_status='unverified'
+        errors.append('Storm identification not verified')
     history=[x for x in old.get('history',[]) if x.get('name')!='Cyclone Warning Bulletin Mauritius']
     if not errors and s and (not history or history[-1]!=s): history.append(s)
-    result=dict(checked_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),source_status='incomplete' if errors else 'ok',warning=w,storm=s,history=history[-100:],errors=errors)
-    temp=target.with_suffix('.tmp'); temp.write_text(json.dumps(result,ensure_ascii=False,indent=2)); temp.replace(target); print(json.dumps(result,ensure_ascii=False))
+    result=dict(
+        checked_at=checked,source_status='incomplete' if errors else 'ok',
+        warning_status=warning_status,storm_status=storm_status,
+        warning_source=BASE+'tropical-cyclone/current-cyclone.php',
+        storm_source=BASE+'current-cyclone.php',
+        warning=w,storm=s,history=history[-100:],errors=errors)
+    temp=target.with_suffix('.tmp')
+    temp.write_text(json.dumps(result,ensure_ascii=False,indent=2))
+    temp.replace(target)
+    print(json.dumps(result,ensure_ascii=False))
 if __name__=='__main__':
     if '--loop' in sys.argv:
         while True: update(); time.sleep(300)
