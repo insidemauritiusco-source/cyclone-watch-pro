@@ -2,7 +2,7 @@
   "schema": 1,
   "source": "MMS Meteosat published image links",
   "retention_days": 7,
-  "updated_at": "2026-11-25T06:22:13.369870+00:00",
+  "updated_at": "2026-11-25T06:26:33.472521+00:00",
   "frames": [
     {
       "url": "https://metservice.intnet.mu/mmsimages/2026-11-24_01%3A28%3A35_IR%2010.8%20Meteosat-9%20%202026-11-23%201900.jpg",
