@@ -1,17 +1,8 @@
 {
-  "checked_at": "2026-11-25T05:39:27.193689+00:00",
+  "checked_at": "2026-11-25T05:41:39.602937+00:00",
   "source_status": "incomplete",
   "warning": "No warning reported",
-  "storm": {
-    "name": "Tropical Disturbance (B03)",
-    "observed": "24 November 2026 04 PM",
-    "lat": -10.4,
-    "lon": 77.5,
-    "pressure": 1006,
-    "speed": 10.0,
-    "direction": "South Southwest",
-    "wind": null
-  },
+  "storm": null,
   "history": [
     {
       "name": "Tropical Disturbance (B03)",
@@ -45,6 +36,6 @@
     }
   ],
   "errors": [
-    "current-cyclone.php: Official bulletin body unavailable"
+    "current-cyclone.php: Official bulletin body unavailable (title exists, content empty)"
   ]
 }
