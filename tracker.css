@@ -214,3 +214,35 @@ body.v29TV.v29Quiet #studioV30{display:none}
  body.v29TV #tvSummary{flex:1 0 100%;min-width:0;overflow-wrap:anywhere}
  body.v29TV.v29Quiet #tvProfileLabel{display:none}
 }
+
+/* V32: optional map-first broadcast dashboard; retain the original TV mode. */
+#globalLiveMap{border:1px solid #3d6985;border-radius:8px;padding:7px 10px;white-space:nowrap;color:#b9efff}
+#tvDashboard{border-color:#46c9ff;font-weight:700}
+body.v32Dashboard{background:#071221}
+body.v32Dashboard header{gap:6px 12px}
+body.v32Dashboard header #globalLiveMap{display:inline-block}
+body.v32Dashboard #tvSummary{background:#0e2537;border-color:#41637c}
+body.v32Dashboard #tvSummary strong{color:#b9f4ff}
+body.v32Dashboard #stormPanel{background:#0b1b2b}
+body.v32Dashboard #storm{overflow-wrap:anywhere}
+body.v32Dashboard #sourceStatus{color:#ffdc9d;line-height:1.4}
+body.v32Dashboard .metrics div,body.v32Dashboard .panel{background:#132b40;border-color:#395a73}
+body.v32Dashboard .metrics b{color:#9beaff}
+body.v32Dashboard .mapstatus,body.v32Dashboard .mapfoot{background:#071625f2}
+body.v32Dashboard .map svg .gridline{stroke-opacity:.28}
+body.v32Dashboard.v29Quiet #globalLiveMap{display:none}
+@media(min-width:851px){
+ body.v32Dashboard main{grid-template-columns:minmax(0,1fr) clamp(270px,22vw,660px);gap:8px;padding:8px}
+ body.v32Dashboard.panel-closed main{grid-template-columns:minmax(0,1fr)}
+ body.v32Dashboard .map{border:1px solid #36536c;border-radius:10px;width:100%;margin:0}
+ body.v32Dashboard #map{position:absolute;inset:0;width:100%;height:100%;transform:none;max-height:none}
+ body.v32Dashboard aside{position:static;width:100%;height:100%;max-height:none;border:1px solid #36536c;border-radius:10px;box-shadow:none;padding:clamp(10px,1vw,30px)}
+ body.v32Dashboard #storm{font-size:clamp(22px,1.6vw,56px)}
+ body.v32Dashboard .metrics b{font-size:clamp(19px,1.45vw,48px)}
+ body.v32Dashboard #sourceStatus,body.v32Dashboard aside small,body.v32Dashboard .panel p,body.v32Dashboard aside .note{font-size:clamp(12px,.77vw,28px)}
+ body.v32Dashboard .mapstatus,body.v32Dashboard .mapfoot,body.v32Dashboard #frameTime{font-size:clamp(12px,.75vw,26px)}
+ body.v32Dashboard footer{padding:8px 14px}
+ body.v32Dashboard #regionalInset{display:none}
+}
+@media(max-width:850px){#globalLiveMap{padding:5px 7px;font-size:11px}body.v32Dashboard #globalLiveMap{display:inline-block}body.v32Dashboard #tvDashboard{font-size:11px}}
+@media(min-width:2560px){body.v32Dashboard header strong{font-size:clamp(32px,1.3vw,54px)}body.v32Dashboard header small{font-size:clamp(14px,.6vw,23px)}body.v32Dashboard .layerMenu summary,body.v32Dashboard .layers button,body.v32Dashboard .layers a{font-size:clamp(16px,.7vw,28px)}body.v32Dashboard .zoomtools button{min-width:54px;min-height:54px}}
