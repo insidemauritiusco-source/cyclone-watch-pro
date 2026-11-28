@@ -2,7 +2,7 @@
   "schema": 1,
   "source": "MMS Meteosat published image links",
   "retention_days": 7,
-  "updated_at": "2026-11-28T10:38:17.302832+00:00",
+  "updated_at": "2026-11-28T18:31:34.621449+00:00",
   "frames": [
     {
       "url": "https://metservice.intnet.mu/mmsimages/2026-11-24_01%3A28%3A35_IR%2010.8%20Meteosat-9%20%202026-11-23%201900.jpg",
@@ -472,6 +472,46 @@
     {
       "url": "https://metservice.intnet.mu/mmsimages/2026-11-28_13%3A09%3A38_IR%2010.8%20Meteosat-9%20%202026-11-28%200900.jpg",
       "captured_at": "2026-11-28T09:00:00+00:00",
+      "product": "ir 10.8 meteosat-9"
+    },
+    {
+      "url": "https://metservice.intnet.mu/mmsimages/2026-11-28_14%3A59%3A48_IR%2010.8%20Meteosat-9%20%202026-11-28%201000.jpg",
+      "captured_at": "2026-11-28T10:00:00+00:00",
+      "product": "ir 10.8 meteosat-9"
+    },
+    {
+      "url": "https://metservice.intnet.mu/mmsimages/2026-11-28_15%3A05%3A45_IR%2010.8%20Meteosat-9%20%202026-11-28%201100.jpg",
+      "captured_at": "2026-11-28T11:00:00+00:00",
+      "product": "ir 10.8 meteosat-9"
+    },
+    {
+      "url": "https://metservice.intnet.mu/mmsimages/2026-11-28_16%3A01%3A32_IR%2010.8%20Meteosat-9%20%202026-11-28%201200.jpg",
+      "captured_at": "2026-11-28T12:00:00+00:00",
+      "product": "ir 10.8 meteosat-9"
+    },
+    {
+      "url": "https://metservice.intnet.mu/mmsimages/2026-11-28_17%3A07%3A57_IR%2010.8%20Meteosat-9%20%202026-11-28%201300.jpg",
+      "captured_at": "2026-11-28T13:00:00+00:00",
+      "product": "ir 10.8 meteosat-9"
+    },
+    {
+      "url": "https://metservice.intnet.mu/mmsimages/2026-11-28_18%3A52%3A09_IR%2010.8%20Meteosat-9%20%202026-11-28%201400.jpg",
+      "captured_at": "2026-11-28T14:00:00+00:00",
+      "product": "ir 10.8 meteosat-9"
+    },
+    {
+      "url": "https://metservice.intnet.mu/mmsimages/2026-11-28_19%3A06%3A50_IR%2010.8%20Meteosat-9%20%202026-11-28%201500.jpg",
+      "captured_at": "2026-11-28T15:00:00+00:00",
+      "product": "ir 10.8 meteosat-9"
+    },
+    {
+      "url": "https://metservice.intnet.mu/mmsimages/2026-11-28_21%3A52%3A53_IR%2010.8%20Meteosat-9%20%202026-11-28%201600.jpg",
+      "captured_at": "2026-11-28T16:00:00+00:00",
+      "product": "ir 10.8 meteosat-9"
+    },
+    {
+      "url": "https://metservice.intnet.mu/mmsimages/2026-11-28_21%3A53%3A00_IR%2010.8%20Meteosat-9%20%202026-11-28%201700.jpg",
+      "captured_at": "2026-11-28T17:00:00+00:00",
       "product": "ir 10.8 meteosat-9"
     }
   ]
